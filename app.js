@@ -24,6 +24,12 @@ function generateId() {
 const taskListEl = document.getElementById('task-list');
 const emptyStateEl = document.getElementById('empty-state');
 
+let selectedIds = new Set();
+
+function isLocked(task) {
+  return new Date(task.datetime) <= new Date();
+}
+
 function escapeHTML(str) {
   return str
     .replace(/&/g, '&amp;')
@@ -45,8 +51,12 @@ function renderTasks(filtered = tasks) {
 
   filtered.forEach(task => {
     const row = document.createElement('div');
-    row.className = 'task-row' + (task.completed ? ' completed' : '');
+    row.className = 'task-row'
+      + (task.completed ? ' completed' : '')
+      + (selectedIds.has(task.id) ? ' selected' : '');
     row.dataset.id = task.id;
+
+    const locked = isLocked(task);
 
     row.innerHTML = `
       <div class="task-info">
@@ -57,7 +67,7 @@ function renderTasks(filtered = tasks) {
         </span>
         <span class="task-priority priority-${task.priority}"></span>
       </div>
-      <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} />
+      <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} ${locked ? 'disabled title="Deadline passed — locked"' : ''} />
     `;
 
     taskListEl.appendChild(row);
@@ -186,6 +196,25 @@ document.getElementById('btn-save').addEventListener('click', () => {
   closeModal();
 });
 
+// Clicking anywhere on a task row (except the checkbox) selects it for
+// edit/delete. Selected rows get a highlighted border via the
+// 'selected' class in CSS.
+taskListEl.addEventListener('click', (e) => {
+  if (e.target.classList.contains('task-checkbox')) return;
+  const row = e.target.closest('.task-row');
+  if (!row) return;
+  const id = row.dataset.id;
+
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+  applyFilterAndSearch();
+});
+
+// The checkbox only ever toggles "completed" — it no longer drives
+// selection for edit/delete.
 taskListEl.addEventListener('change', (e) => {
   if (!e.target.classList.contains('task-checkbox')) return;
   const id = e.target.closest('.task-row').dataset.id;
@@ -196,26 +225,30 @@ taskListEl.addEventListener('change', (e) => {
 });
 
 document.getElementById('btn-edit').addEventListener('click', () => {
-  const checked = taskListEl.querySelector('.task-row input:checked');
-  if (!checked) return;
-  const id = checked.closest('.task-row').dataset.id;
+  if (selectedIds.size === 0) {
+    alert('Click a task first to select it.');
+    return;
+  }
+  if (selectedIds.size > 1) {
+    alert('Select only one task to edit.');
+    return;
+  }
+  const id = [...selectedIds][0];
   const task = tasks.find(t => t.id === id);
   if (task) openModal(task);
 });
 
 document.getElementById('btn-delete').addEventListener('click', () => {
-  const checked = taskListEl.querySelectorAll('.task-row input:checked');
-  if (checked.length === 0) return;
-  checked.forEach(cb => {
-    const id = cb.closest('.task-row').dataset.id;
-    tasks = tasks.filter(t => t.id !== id);
-  });
+  if (selectedIds.size === 0) return;
+  tasks = tasks.filter(t => !selectedIds.has(t.id));
+  selectedIds.clear();
   saveTasks();
   applyFilterAndSearch();
 });
 
 document.getElementById('btn-reload').addEventListener('click', () => {
   loadTasks();
+  updateOverdueTasks();
   applyFilterAndSearch();
 });
 
@@ -276,6 +309,24 @@ function applyFilterAndSearch() {
   }
 
   renderTasks(filtered);
+}
+
+// ─── OVERDUE AUTO-LOCK ───────────────────────────────
+
+// Any task whose deadline has passed is auto-marked completed and its
+// checkbox gets disabled in renderTasks() (see isLocked()).
+function updateOverdueTasks() {
+  const now = new Date();
+  let changed = false;
+  tasks = tasks.map(t => {
+    if (!t.completed && new Date(t.datetime) <= now) {
+      changed = true;
+      return { ...t, completed: true };
+    }
+    return t;
+  });
+  if (changed) saveTasks();
+  return changed;
 }
 
 // ─── ASIDE ───────────────────────────────────────────
@@ -381,7 +432,9 @@ document.getElementById('restore-file-input').addEventListener('change', (e) => 
       const restored = JSON.parse(event.target.result);
       if (!Array.isArray(restored)) throw new Error();
       tasks = restored.map(t => ({ ...t, completed: t.completed ?? false }));
+      selectedIds.clear();
       saveTasks();
+      updateOverdueTasks();
       applyFilterAndSearch();
       closeAside();
       alert(`Restored ${tasks.length} tasks successfully.`);
@@ -407,8 +460,14 @@ function downloadFile(filename, content, type) {
 
 function init() {
   loadTasks();
+  updateOverdueTasks();
   applyFilterAndSearch();
   lucide.createIcons();
+  // Re-check deadlines every 30s so a task locks itself the moment it
+  // becomes overdue, without needing a manual reload.
+  setInterval(() => {
+    if (updateOverdueTasks()) applyFilterAndSearch();
+  }, 30000);
   console.log('app loaded', tasks);
 }
 

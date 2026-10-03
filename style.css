@@ -247,12 +247,19 @@ body {
   margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(255,255,255,0.06);
-  transition: box-shadow 0.15s, transform 0.1s, opacity 0.2s;
+  transition: box-shadow 0.15s, transform 0.1s, opacity 0.2s, outline-color 0.15s;
+  cursor: pointer;
 }
 
 .task-row:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+}
+
+/* Click-to-select highlight, used for edit/delete */
+.task-row.selected {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .task-row.completed {
@@ -322,6 +329,12 @@ body {
   cursor: pointer;
   accent-color: var(--primary);
   flex-shrink: 0;
+}
+
+/* Deadline has passed — task is auto-locked */
+.task-checkbox:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ── Search bar ── */
