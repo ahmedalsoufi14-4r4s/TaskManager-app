@@ -30,6 +30,16 @@ function isLocked(task) {
   return new Date(task.datetime) <= new Date();
 }
 
+// Overdue is derived, never stored: deadline passed and not completed.
+function isOverdue(task) {
+  return !task.completed && isLocked(task);
+}
+
+function getStatus(task) {
+  if (task.completed) return 'Completed';
+  return isOverdue(task) ? 'Overdue' : 'Active';
+}
+
 function escapeHTML(str) {
   return str
     .replace(/&/g, '&amp;')
@@ -51,17 +61,20 @@ function renderTasks(filtered = tasks) {
 
   filtered.forEach(task => {
     const row = document.createElement('div');
+    const locked = isLocked(task);
+    const overdue = isOverdue(task);
+
     row.className = 'task-row'
       + (task.completed ? ' completed' : '')
+      + (overdue ? ' overdue' : '')
       + (selectedIds.has(task.id) ? ' selected' : '');
     row.dataset.id = task.id;
-
-    const locked = isLocked(task);
 
     row.innerHTML = `
       <div class="task-info">
         <span class="task-name">${escapeHTML(task.name)}</span>
         <span class="task-date">${formatDate(task.datetime)}</span>
+        ${overdue ? '<span class="task-overdue">Overdue</span>' : ''}
         <span class="task-label" style="background-color: ${getLabelColor(task.label)}">
           ${escapeHTML(task.label)}
         </span>
@@ -299,7 +312,9 @@ function applyFilterAndSearch() {
   let filtered = tasks;
 
   if (currentFilter === 'active') {
-    filtered = filtered.filter(t => !t.completed);
+    filtered = filtered.filter(t => !t.completed && !isOverdue(t));
+  } else if (currentFilter === 'overdue') {
+    filtered = filtered.filter(isOverdue);
   } else if (currentFilter === 'completed') {
     filtered = filtered.filter(t => t.completed);
   }
@@ -313,19 +328,17 @@ function applyFilterAndSearch() {
 
 // ─── OVERDUE AUTO-LOCK ───────────────────────────────
 
-// Any task whose deadline has passed is auto-marked completed and its
-// checkbox gets disabled in renderTasks() (see isLocked()).
+// A task whose deadline has passed gets its checkbox disabled in
+// renderTasks() (see isLocked()). Overdue is never saved; this only
+// tracks which tasks are overdue so the list re-renders when one
+// crosses its deadline.
+let overdueIds = new Set();
+
 function updateOverdueTasks() {
-  const now = new Date();
-  let changed = false;
-  tasks = tasks.map(t => {
-    if (!t.completed && new Date(t.datetime) <= now) {
-      changed = true;
-      return { ...t, completed: true };
-    }
-    return t;
-  });
-  if (changed) saveTasks();
+  const current = new Set(tasks.filter(isOverdue).map(t => t.id));
+  const changed = current.size !== overdueIds.size
+    || [...current].some(id => !overdueIds.has(id));
+  overdueIds = current;
   return changed;
 }
 
@@ -394,11 +407,12 @@ document.getElementById('btn-notif-settings').addEventListener('click', () => {
 document.getElementById('btn-export').addEventListener('click', () => {
   const now = new Date().toLocaleString('en-GB');
   const completed = tasks.filter(t => t.completed).length;
-  const active = tasks.length - completed;
+  const overdue = tasks.filter(isOverdue).length;
+  const active = tasks.length - completed - overdue;
 
   let report = `TASK MANAGER — EXPORT REPORT\n`;
   report += `Generated: ${now}\n`;
-  report += `Total: ${tasks.length} | Active: ${active} | Completed: ${completed}\n`;
+  report += `Total: ${tasks.length} | Active: ${active} | Overdue: ${overdue} | Completed: ${completed}\n`;
   report += `─────────────────────────────────────────\n\n`;
 
   tasks.forEach((t, i) => {
@@ -406,7 +420,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
     report += `    Date:     ${formatDate(t.datetime) || 'No date set'}\n`;
     report += `    Label:    ${t.label}\n`;
     report += `    Priority: ${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}\n`;
-    report += `    Status:   ${t.completed ? 'Completed' : 'Active'}\n\n`;
+    report += `    Status:   ${getStatus(t)}\n\n`;
   });
 
   downloadFile('task-report.txt', report, 'text/plain');

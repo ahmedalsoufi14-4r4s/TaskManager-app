@@ -25,6 +25,8 @@
   --priority-medium: #F59E0B;
   --priority-low:    #22C55E;
 
+  --overdue: #DC2626;
+
   --font: 'Inter', sans-serif;
   --radius: 10px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
@@ -268,6 +270,26 @@ body {
 
 .task-row.completed .task-name {
   text-decoration: line-through;
+}
+
+/* Deadline passed without being completed */
+.task-row.overdue {
+  border-color: var(--overdue);
+  box-shadow: inset 4px 0 0 var(--overdue), var(--shadow-sm);
+}
+
+.task-row.overdue:hover {
+  box-shadow: inset 4px 0 0 var(--overdue), var(--shadow-md);
+}
+
+.task-overdue {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background-color: var(--overdue);
+  padding: 4px 11px;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
 .task-info {
