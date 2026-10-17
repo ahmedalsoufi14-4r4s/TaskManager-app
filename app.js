@@ -375,21 +375,33 @@ taskListEl.addEventListener('change', (e) => {
   applyFilterAndSearch();
 });
 
-document.getElementById('btn-edit').addEventListener('click', () => {
-  if (selectedIds.size === 0) {
-    showToast('Click a task first to select it.');
-    return;
-  }
-  if (selectedIds.size > 1) {
-    showToast('Select only one task to edit.');
-    return;
-  }
+const btnEdit   = document.getElementById('btn-edit');
+const btnDelete = document.getElementById('btn-delete');
+
+// Edit needs exactly one selected task, Delete at least one. The
+// tooltip says why a button is disabled.
+function updateActionButtons() {
+  const count = selectedIds.size;
+
+  btnEdit.disabled = count !== 1;
+  btnEdit.title = count === 1 ? 'Edit task'
+    : count === 0 ? 'Select one task to edit'
+    : 'Select only one task to edit';
+
+  btnDelete.disabled = count === 0;
+  btnDelete.title = count === 0 ? 'Select tasks to delete'
+    : count === 1 ? 'Delete task'
+    : `Delete ${count} tasks`;
+}
+
+btnEdit.addEventListener('click', () => {
+  if (selectedIds.size !== 1) return;
   const id = [...selectedIds][0];
   const task = tasks.find(t => t.id === id);
   if (task) openModal(task);
 });
 
-document.getElementById('btn-delete').addEventListener('click', () => {
+btnDelete.addEventListener('click', () => {
   if (selectedIds.size === 0) return;
   // Keep each task's index so undo can put it back in place
   const removed = tasks
@@ -514,8 +526,14 @@ function applyFilterAndSearch() {
     filtered = filtered.filter(t => t.name.toLowerCase().includes(query));
   }
 
+  // Tasks hidden by a filter or search (or deleted) leave the
+  // selection, so Delete never removes something you can't see
+  const visibleIds = new Set(filtered.map(t => t.id));
+  selectedIds = new Set([...selectedIds].filter(id => visibleIds.has(id)));
+
   renderTasks(filtered);
   renderStats();
+  updateActionButtons();
 }
 
 // ─── SORT ────────────────────────────────────────────

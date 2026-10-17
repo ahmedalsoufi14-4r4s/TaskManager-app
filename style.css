@@ -104,6 +104,20 @@ body {
   transform: scale(0.92);
 }
 
+/* Edit/Delete with nothing (or too much) selected */
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.icon-btn:disabled:hover {
+  background-color: transparent;
+}
+
+.icon-btn:disabled:active {
+  transform: none;
+}
+
 /* Keyboard focus ring. Elements on the page background use --bg-focus
    so the ring stays visible in light mode. */
 button:focus-visible,
