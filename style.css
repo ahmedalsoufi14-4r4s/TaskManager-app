@@ -19,6 +19,7 @@
   --bg-text:       #ffffff;
   --bg-text-muted: #f8a8c4;
   --bg-line:       rgba(255,255,255,0.2);
+  --bg-focus:      #ffd43b;
 
   --label-university: #3B82F6;
   --label-work:       #F97316;
@@ -101,6 +102,22 @@ body {
 
 .icon-btn:active {
   transform: scale(0.92);
+}
+
+/* Keyboard focus ring. Elements on the page background use --bg-focus
+   so the ring stays visible in light mode. */
+button:focus-visible,
+.task-checkbox:focus-visible,
+.toggle input:focus-visible + .toggle-slider,
+.pref-row select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.filter-btn:focus-visible,
+.toolbar-select:focus-visible {
+  outline: 2px solid var(--bg-focus);
+  outline-offset: 2px;
 }
 
 /* ── Main layout ── */
@@ -682,6 +699,39 @@ body {
 
 .full-width {
   width: 100%;
+  text-align: center;
+}
+
+/* Keyboard shortcut list in the side menu */
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.shortcut-row dt {
+  min-width: 56px;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 28px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background-color: rgba(0,0,0,0.18);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
   text-align: center;
 }
 

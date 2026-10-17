@@ -209,10 +209,21 @@ const inputLabel        = document.getElementById('input-label');
 const inputCustomLabel  = document.getElementById('input-custom-label');
 const customLabelGroup  = document.getElementById('custom-label-group');
 const inputPriority     = document.getElementById('input-priority');
+const btnAdd            = document.getElementById('btn-add');
 
 let editingId = null;
+let modalOpener = null;
+
+// Puts focus back on an element, or on the fallback if that element is
+// gone, hidden or disabled
+function restoreFocus(el, fallback) {
+  const usable = el && el !== document.body && el.isConnected
+    && !el.disabled && el.offsetParent !== null;
+  (usable ? el : fallback).focus();
+}
 
 function openModal(task = null) {
+  modalOpener = document.activeElement;
   editingId = task ? task.id : null;
   modalTitle.textContent = task ? 'Edit Task' : 'Add Task';
 
@@ -238,6 +249,7 @@ function openModal(task = null) {
 function closeModal() {
   modalOverlay.classList.remove('active');
   editingId = null;
+  restoreFocus(modalOpener, btnAdd);
 }
 
 inputLabel.addEventListener('change', () => {
@@ -280,7 +292,7 @@ toastAction.addEventListener('click', () => {
 
 // ─── EVENTS ──────────────────────────────────────────
 
-document.getElementById('btn-add').addEventListener('click', () => openModal());
+btnAdd.addEventListener('click', () => openModal());
 
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
 document.getElementById('btn-cancel').addEventListener('click', closeModal);
@@ -407,23 +419,26 @@ document.getElementById('btn-reload').addEventListener('click', () => {
 
 const searchBar   = document.getElementById('search-bar');
 const searchInput = document.getElementById('search-input');
+const btnSearch   = document.getElementById('btn-search');
 let currentFilter = 'all';
 
-document.getElementById('btn-search').addEventListener('click', () => {
-  searchBar.classList.toggle('active');
-  if (searchBar.classList.contains('active')) {
-    searchInput.focus();
-  } else {
-    searchInput.value = '';
-    applyFilterAndSearch();
-  }
-});
-
-document.getElementById('btn-close-search').addEventListener('click', () => {
+function closeSearch() {
   searchBar.classList.remove('active');
   searchInput.value = '';
   applyFilterAndSearch();
+  btnSearch.focus();
+}
+
+btnSearch.addEventListener('click', () => {
+  if (searchBar.classList.contains('active')) {
+    closeSearch();
+  } else {
+    searchBar.classList.add('active');
+    searchInput.focus();
+  }
 });
+
+document.getElementById('btn-close-search').addEventListener('click', closeSearch);
 
 searchInput.addEventListener('input', applyFilterAndSearch);
 
@@ -551,21 +566,32 @@ function updateOverdueTasks() {
 
 // ─── ASIDE ───────────────────────────────────────────
 
-const asideOverlay = document.getElementById('aside-overlay');
+const asideOverlay  = document.getElementById('aside-overlay');
+const btnMenu       = document.getElementById('btn-menu');
+const btnCloseAside = document.getElementById('btn-close-aside');
 
-function openAside() { asideOverlay.classList.add('active'); }
-function closeAside() { asideOverlay.classList.remove('active'); }
+// Focus moves into the menu when it opens and back to its button on close
+function openAside() {
+  asideOverlay.classList.add('active');
+  btnCloseAside.focus();
+}
 
-document.getElementById('btn-menu').addEventListener('click', openAside);
-document.getElementById('btn-close-aside').addEventListener('click', closeAside);
+function closeAside() {
+  asideOverlay.classList.remove('active');
+  btnMenu.focus();
+}
+
+btnMenu.addEventListener('click', openAside);
+btnCloseAside.addEventListener('click', closeAside);
 
 asideOverlay.addEventListener('click', (e) => {
   if (e.target === asideOverlay) closeAside();
 });
 
 // Theme
-// Every colour variable each theme sets. --bg-text, --bg-text-muted and
-// --bg-line are for things drawn straight on the page background.
+// Every colour variable each theme sets. --bg-text, --bg-text-muted,
+// --bg-line and --bg-focus are for things drawn straight on the page
+// background.
 const themes = {
   light: {
     '--bg':            '#eef3f4',
@@ -577,6 +603,7 @@ const themes = {
     '--bg-text':       '#16313a',
     '--bg-text-muted': '#4a636b',
     '--bg-line':       'rgba(0,0,0,0.2)',
+    '--bg-focus':      '#0a7080',
   },
   dark: {
     '--bg':            '#846358',
@@ -588,6 +615,7 @@ const themes = {
     '--bg-text':       '#ffffff',
     '--bg-text-muted': '#f783ac',
     '--bg-line':       'rgba(255,255,255,0.2)',
+    '--bg-focus':      '#ffd43b',
   },
 };
 
@@ -739,6 +767,41 @@ function downloadFile(filename, content, type) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ─── KEYBOARD ────────────────────────────────────────
+
+// True while focus is in a field, so letter shortcuts don't fire
+function isTypingTarget(el) {
+  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
+
+document.addEventListener('keydown', (e) => {
+  // Esc closes whatever is on top: modal, then side menu, then search
+  if (e.key === 'Escape') {
+    if (modalOverlay.classList.contains('active')) closeModal();
+    else if (asideOverlay.classList.contains('active')) closeAside();
+    else if (searchBar.classList.contains('active')) closeSearch();
+    return;
+  }
+
+  // N opens a new task, but not while typing, with Ctrl/Cmd/Alt held,
+  // or while the modal or side menu is open
+  if (e.key !== 'n' && e.key !== 'N') return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+  if (isTypingTarget(e.target)) return;
+  if (modalOverlay.classList.contains('active') || asideOverlay.classList.contains('active')) return;
+  e.preventDefault();
+  openModal();
+});
+
+// Enter saves from a text or date field in the modal. Buttons and
+// selects keep their own Enter behaviour, and a held key saves once.
+modalOverlay.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
+  if (!e.target.matches('input[type="text"], input[type="datetime-local"]')) return;
+  e.preventDefault();
+  document.getElementById('btn-save').click();
+});
 
 // ─── INIT ────────────────────────────────────────────
 

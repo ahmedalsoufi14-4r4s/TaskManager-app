@@ -20,7 +20,7 @@
     <!-- HEADER -->
     <header class="header">
       <div class="header-left">
-        <button class="icon-btn" id="btn-add" title="Add task">
+        <button class="icon-btn" id="btn-add" title="Add task (N)">
           <i data-lucide="plus"></i>
         </button>
         <button class="icon-btn" id="btn-delete" title="Delete task">
@@ -215,6 +215,25 @@
             Restore from backup
           </button>
           <input type="file" id="restore-file-input" accept=".json" style="display:none" />
+        </section>
+
+        <!-- SHORTCUTS -->
+        <section class="aside-section">
+          <h3 class="aside-section-title">Shortcuts</h3>
+          <dl class="shortcuts">
+            <div class="shortcut-row">
+              <dt><kbd>N</kbd></dt>
+              <dd>New task</dd>
+            </div>
+            <div class="shortcut-row">
+              <dt><kbd>Enter</kbd></dt>
+              <dd>Save task</dd>
+            </div>
+            <div class="shortcut-row">
+              <dt><kbd>Esc</kbd></dt>
+              <dd>Close window, menu or search</dd>
+            </div>
+          </dl>
         </section>
 
       </div>
