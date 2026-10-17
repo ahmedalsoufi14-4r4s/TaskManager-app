@@ -150,22 +150,37 @@ function renderTaskRow(task) {
   return row;
 }
 
+// Dates and times are built by hand so they look the same whatever the
+// browser's language or region: "17 Oct 2026, 3:00 PM"
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December'];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const pad = n => String(n).padStart(2, '0');
+
+// 12-hour clock: 0:05 is "12:05 AM", 12:00 is "12:00 PM"
+function formatClock(hours, minutes) {
+  return `${hours % 12 || 12}:${pad(minutes)} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
+// "Saturday, 17 October 2026"
+function formatLongDate(d) {
+  return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 function formatDate(datetime) {
   if (!datetime) return '';
   const d = new Date(datetime);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
+  return `${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}, `
+    + formatClock(d.getHours(), d.getMinutes());
 }
 
 // Exact timestamp for the tooltip
 function formatFullDate(datetime) {
   if (!datetime || Number.isNaN(new Date(datetime).getTime())) return '';
-  return new Date(datetime).toLocaleString('en-GB', {
-    dateStyle: 'full', timeStyle: 'short'
-  });
+  const d = new Date(datetime);
+  return `${formatLongDate(d)} at ${formatClock(d.getHours(), d.getMinutes())}`;
 }
 
 // Short label like "in 2 h", "in 3 days" or "overdue by 1 day"
@@ -237,10 +252,21 @@ function restoreFocus(el, fallback) {
 }
 
 // ── Deadline input ──
-// Tasks store the deadline as a local "YYYY-MM-DDTHH:mm" string. The
-// modal splits it into a date field and a 24-hour time field.
+// Tasks store the deadline as a local "YYYY-MM-DDTHH:mm" string (24-hour).
+// The modal shows it as a DD/MM/YYYY date field and a 12-hour time field
+// with AM/PM buttons.
 
-const pad = n => String(n).padStart(2, '0');
+const inputDateWrap = document.getElementById('date-wrap');
+const btnCalendar   = document.getElementById('btn-calendar');
+const calendar      = document.getElementById('calendar');
+const calTitle      = document.getElementById('cal-title');
+const calBody       = document.getElementById('cal-body');
+const ampmButtons   = document.querySelectorAll('[data-period]');
+
+// AM or PM for a typed hour from 1 to 12 without AM/PM
+let timePeriod = 'AM';
+// Day the calendar is showing and has keyboard focus on, "YYYY-MM-DD"
+let calFocus = '';
 
 function toDateValue(d) {
   return `${String(d.getFullYear()).padStart(4, '0')}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -250,26 +276,70 @@ function toDatetimeValue(d) {
   return `${toDateValue(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Accepts 14:30, 1430, 930, 9.30 or 9 and returns "HH:MM", or null
-function parseTime(text) {
-  const t = text.trim().replace('.', ':');
-  const m = t.match(/^(\d{1,2}):(\d{2})$/) || t.match(/^(\d{1,2})(\d{2})$/) || t.match(/^(\d{1,2})$/);
-  if (!m) return null;
-  const hours = Number(m[1]);
-  const minutes = Number(m[2] || 0);
-  if (hours > 23 || minutes > 59) return null;
-  return `${pad(hours)}:${pad(minutes)}`;
+// "YYYY-MM-DD" to "DD/MM/YYYY"
+function toDateText(value) {
+  const [year, month, day] = value.split('-');
+  return `${day}/${month}/${year}`;
 }
 
-// Today, tomorrow, or next Monday ("next week")
+// "HH:MM" (24-hour) to "3:00 PM"
+function toTimeText(value) {
+  const [hours, minutes] = value.split(':').map(Number);
+  return formatClock(hours, minutes);
+}
+
+// Reads DD/MM/YYYY, also 1/2/2026, 1-2-2026, 1.2.2026 or 01022026.
+// Returns { date: "YYYY-MM-DD" }, { error } or null when empty.
+function parseDateText(text) {
+  const t = text.trim();
+  if (!t) return null;
+  const m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/) || t.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (!m) return { error: 'Enter the date as DD/MM/YYYY' };
+  const [day, month, year] = m.slice(1, 4).map(Number);
+  if (year < 1900) return { error: 'Year must be 1900 or later' };
+  if (month < 1 || month > 12) return { error: 'Month must be between 01 and 12' };
+  const days = new Date(year, month, 0).getDate();
+  if (day < 1 || day > days) {
+    return { error: `Day must be between 01 and ${days} for ${MONTHS[month - 1]} ${year}` };
+  }
+  return { date: `${year}-${pad(month)}-${pad(day)}` };
+}
+
+// Reads 2:30pm, 2:30 PM, 230pm, 2.30 pm, 9am and 14:30. Without AM/PM an
+// hour from 1 to 12 uses the selected AM/PM button, while 0 and 13 to 23
+// are read as 24-hour. Returns { time: "HH:MM" (24-hour), period } or null.
+function parseTime(text, period = timePeriod) {
+  const t = text.toLowerCase().replace(/\s+/g, '')
+    .replace(/a\.?m?\.?$/, 'am').replace(/p\.?m?\.?$/, 'pm')
+    .replace(/[.,]/, ':');
+  const m = t.match(/^(\d{1,2})(?::(\d{2})|(\d{2}))?(am|pm)?$/);
+  if (!m) return null;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2] ?? m[3] ?? 0);
+  if (minutes > 59) return null;
+
+  if (m[4]) {
+    if (hours < 1 || hours > 12) return null;
+    period = m[4].toUpperCase();
+  } else if (hours === 0 || hours > 12) {
+    if (hours > 23) return null;
+    return { time: `${pad(hours)}:${pad(minutes)}`, period: hours < 12 ? 'AM' : 'PM' };
+  }
+
+  // 12 AM is midnight and 12 PM is noon
+  const hours24 = (hours % 12) + (period === 'PM' ? 12 : 0);
+  return { time: `${pad(hours24)}:${pad(minutes)}`, period };
+}
+
+// Today, tomorrow, or seven days from today ("next week")
 function quickDate(key) {
   const d = new Date();
   if (key === 'tomorrow') d.setDate(d.getDate() + 1);
-  if (key === 'next-week') d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+  if (key === 'next-week') d.setDate(d.getDate() + 7);
   return toDateValue(d);
 }
 
-// New tasks start at the next full hour (after 23:00 that is tomorrow)
+// New tasks start at the next full hour (after 11 PM that is tomorrow)
 function defaultDeadline() {
   const d = new Date();
   d.setHours(d.getHours() + 1, 0, 0, 0);
@@ -278,17 +348,22 @@ function defaultDeadline() {
 
 function setDeadline(datetime) {
   const valid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(datetime || '');
-  inputDate.value = valid ? datetime.slice(0, 10) : '';
-  inputTime.value = valid ? datetime.slice(11, 16) : '';
+  inputDate.value = valid ? toDateText(datetime.slice(0, 10)) : '';
+  inputTime.value = valid ? toTimeText(datetime.slice(11, 16)) : '';
+  if (valid) timePeriod = Number(datetime.slice(11, 13)) < 12 ? 'AM' : 'PM';
   updateDeadlineSummary();
 }
 
 // Shows the chosen deadline in the list's format, warns about past
-// times, and marks the matching quick pick buttons
+// times, and marks the matching AM/PM and quick pick buttons
 function updateDeadlineSummary() {
-  const date = inputDate.value;
-  const time = parseTime(inputTime.value);
+  const dateResult = parseDateText(inputDate.value);
+  const timeResult = parseTime(inputTime.value);
+  const date = dateResult && dateResult.date;
+  const time = timeResult && timeResult.time;
+  const period = timeResult ? timeResult.period : timePeriod;
 
+  ampmButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.period === period)));
   document.querySelectorAll('[data-quick-date]').forEach(chip => {
     chip.setAttribute('aria-pressed', String(quickDate(chip.dataset.quickDate) === date));
   });
@@ -297,30 +372,32 @@ function updateDeadlineSummary() {
   });
 
   if (!date || !time) {
-    deadlineSummary.textContent = 'Pick a date and a time';
+    deadlineSummary.textContent = !date && !time ? 'Pick a date and a time'
+      : !date ? 'Pick a date' : 'Pick a time';
     deadlineWarning.hidden = true;
     return;
   }
 
   const task = { datetime: `${date}T${time}`, completed: editingCompleted };
   const due = new Date(task.datetime);
-  const weekday = due.toLocaleDateString('en-GB', { weekday: 'short' });
-  let text = `Due ${weekday} ${formatDate(task.datetime)} · ${formatRelative(task)}`;
-  // A time skipped by a clock change (e.g. 02:30) moves to the real one
+  let text = `Due ${DAYS[due.getDay()].slice(0, 3)} ${formatDate(task.datetime)} · ${formatRelative(task)}`;
+  // A time skipped by a clock change (e.g. 2:30 AM) moves to the real one
   const realTime = `${pad(due.getHours())}:${pad(due.getMinutes())}`;
-  if (realTime !== time) text += ` (clocks change, so ${time} becomes ${realTime})`;
+  if (realTime !== time) text += ` (clocks change, so ${toTimeText(time)} becomes ${toTimeText(realTime)})`;
   deadlineSummary.textContent = text;
   deadlineWarning.hidden = !isOverdue(task);
 }
 
-function showFieldError(field, message = '') {
+function showFieldError(field, message = '', moveFocus = true) {
   field.style.borderColor = '#EF4444';
   field.setAttribute('aria-invalid', 'true');
+  // A deadline error takes the place of the preview line
   if (message) {
     deadlineError.textContent = message;
     deadlineError.hidden = false;
+    deadlineSummary.hidden = true;
   }
-  field.focus();
+  if (moveFocus) field.focus();
 }
 
 function clearFieldError(field) {
@@ -332,11 +409,12 @@ function clearDeadlineErrors() {
   clearFieldError(inputDate);
   clearFieldError(inputTime);
   deadlineError.hidden = true;
+  deadlineSummary.hidden = false;
 }
 
 document.querySelectorAll('[data-quick-date]').forEach(chip => {
   chip.addEventListener('click', () => {
-    inputDate.value = quickDate(chip.dataset.quickDate);
+    inputDate.value = toDateText(quickDate(chip.dataset.quickDate));
     clearDeadlineErrors();
     updateDeadlineSummary();
   });
@@ -345,11 +423,35 @@ document.querySelectorAll('[data-quick-date]').forEach(chip => {
 // A quick time with no date yet means today
 document.querySelectorAll('[data-quick-time]').forEach(chip => {
   chip.addEventListener('click', () => {
-    inputTime.value = chip.dataset.quickTime;
-    if (!inputDate.value) inputDate.value = quickDate('today');
+    inputTime.value = toTimeText(chip.dataset.quickTime);
+    timePeriod = Number(chip.dataset.quickTime.slice(0, 2)) < 12 ? 'AM' : 'PM';
+    if (!parseDateText(inputDate.value)?.date) inputDate.value = toDateText(quickDate('today'));
     clearDeadlineErrors();
     updateDeadlineSummary();
   });
+});
+
+// AM/PM buttons switch the typed time between morning and afternoon
+ampmButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    timePeriod = btn.dataset.period;
+    const result = parseTime(inputTime.value);
+    if (result) {
+      const hours = Number(result.time.slice(0, 2)) % 12 + (timePeriod === 'PM' ? 12 : 0);
+      inputTime.value = formatClock(hours, Number(result.time.slice(3)));
+    }
+    clearDeadlineErrors();
+    updateDeadlineSummary();
+  });
+});
+
+// Adds the slashes while typing a date at the end of the field
+inputDate.addEventListener('input', (e) => {
+  const v = inputDate.value;
+  if (e.inputType === 'insertText' && inputDate.selectionStart === v.length) {
+    if (/^\d{2}$/.test(v) || /^\d{1,2}\/\d{2}$/.test(v)) inputDate.value = v + '/';
+    else if (v.endsWith('//')) inputDate.value = v.slice(0, -1);
+  }
 });
 
 [inputDate, inputTime].forEach(field => {
@@ -359,10 +461,132 @@ document.querySelectorAll('[data-quick-time]').forEach(chip => {
   });
 });
 
-// Tidy a typed time such as "930" into "09:30" when leaving the field
+// Tidy a typed date such as "1/2/2026" into "01/02/2026" when leaving the
+// field, and point out an impossible one unless the calendar or a quick
+// date button is about to set it
+inputDate.addEventListener('blur', (e) => {
+  const result = parseDateText(inputDate.value);
+  if (result && result.date) {
+    inputDate.value = toDateText(result.date);
+  } else if (result && result.error) {
+    const next = e.relatedTarget;
+    const picking = next && (inputDateWrap.contains(next) || next.matches('[data-quick-date]'));
+    if (!picking) showFieldError(inputDate, result.error, false);
+  }
+});
+
+// Tidy a typed time such as "230pm" into "2:30 PM" when leaving the field
 inputTime.addEventListener('blur', () => {
-  const time = parseTime(inputTime.value);
-  if (time) inputTime.value = time;
+  const result = parseTime(inputTime.value);
+  if (result) {
+    inputTime.value = toTimeText(result.time);
+    timePeriod = result.period;
+    updateDeadlineSummary();
+  }
+});
+
+// ── Calendar ──
+// A small month view that starts the week on Monday. Arrow keys move by
+// day or week, Page Up/Down by month, Home/End to the week's ends.
+
+function renderCalendar() {
+  const [year, month] = calFocus.split('-').map(Number);
+  const offset = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+  const days = new Date(year, month, 0).getDate();
+  const selected = parseDateText(inputDate.value)?.date;
+  const today = quickDate('today');
+
+  calTitle.textContent = `${MONTHS[month - 1]} ${year}`;
+  let html = '';
+  for (let day = 1 - offset; day <= days; day += 7) {
+    html += '<tr>';
+    for (let i = day; i < day + 7; i++) {
+      if (i < 1 || i > days) {
+        html += '<td></td>';
+        continue;
+      }
+      const value = `${year}-${pad(month)}-${pad(i)}`;
+      html += `<td><button type="button" class="cal-day" data-date="${value}"`
+        + ` tabindex="${value === calFocus ? 0 : -1}" aria-pressed="${value === selected}"`
+        + `${value === today ? ' aria-current="date"' : ''}`
+        + ` aria-label="${formatLongDate(new Date(year, month - 1, i))}">${i}</button></td>`;
+    }
+    html += '</tr>';
+  }
+  calBody.innerHTML = html;
+}
+
+function focusCalendarDay() {
+  const btn = calBody.querySelector(`[data-date="${calFocus}"]`);
+  if (btn) btn.focus();
+}
+
+function openCalendar() {
+  calFocus = parseDateText(inputDate.value)?.date || quickDate('today');
+  renderCalendar();
+  calendar.hidden = false;
+  btnCalendar.setAttribute('aria-expanded', 'true');
+  focusCalendarDay();
+}
+
+function closeCalendar(returnFocus = true) {
+  if (calendar.hidden) return;
+  calendar.hidden = true;
+  btnCalendar.setAttribute('aria-expanded', 'false');
+  if (returnFocus) btnCalendar.focus();
+}
+
+// Moves the calendar by days or by months (keeping the day if it exists)
+function shiftCalendar(days, months = 0) {
+  const [year, month, day] = calFocus.split('-').map(Number);
+  const target = new Date(year, month - 1 + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(day, lastDay) + days);
+  calFocus = toDateValue(target);
+  renderCalendar();
+}
+
+btnCalendar.addEventListener('click', () => {
+  if (calendar.hidden) openCalendar();
+  else closeCalendar();
+});
+
+document.getElementById('cal-prev').addEventListener('click', () => shiftCalendar(0, -1));
+document.getElementById('cal-next').addEventListener('click', () => shiftCalendar(0, 1));
+
+calBody.addEventListener('click', (e) => {
+  const btn = e.target.closest('.cal-day');
+  if (!btn) return;
+  inputDate.value = toDateText(btn.dataset.date);
+  clearDeadlineErrors();
+  updateDeadlineSummary();
+  closeCalendar();
+});
+
+calBody.addEventListener('keydown', (e) => {
+  const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+  const weekday = (new Date(`${calFocus}T00:00`).getDay() + 6) % 7;
+  if (e.key in moves) shiftCalendar(moves[e.key]);
+  else if (e.key === 'PageUp') shiftCalendar(0, -1);
+  else if (e.key === 'PageDown') shiftCalendar(0, 1);
+  else if (e.key === 'Home') shiftCalendar(-weekday);
+  else if (e.key === 'End') shiftCalendar(6 - weekday);
+  else return;
+  e.preventDefault();
+  focusCalendarDay();
+});
+
+// Clicking or tabbing anywhere else closes the calendar
+document.addEventListener('pointerdown', (e) => {
+  if (!calendar.hidden && !calendar.contains(e.target) && !btnCalendar.contains(e.target)) {
+    closeCalendar(false);
+  }
+});
+
+document.addEventListener('focusin', (e) => {
+  if (!calendar.hidden && !calendar.contains(e.target) && e.target !== btnCalendar) {
+    closeCalendar(false);
+  }
 });
 
 inputName.addEventListener('input', () => clearFieldError(inputName));
@@ -383,9 +607,9 @@ function openModal(task = null) {
 
   // Tooltips with the real dates behind the quick date buttons
   document.querySelectorAll('[data-quick-date]').forEach(chip => {
-    chip.title = new Date(`${quickDate(chip.dataset.quickDate)}T00:00`)
-      .toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    chip.title = formatLongDate(new Date(`${quickDate(chip.dataset.quickDate)}T00:00`));
   });
+  closeCalendar(false);
 
   const knownLabels = ['university', 'work', 'personal', 'health'];
   if (task && !knownLabels.includes(task.label)) {
@@ -403,6 +627,7 @@ function openModal(task = null) {
 }
 
 function closeModal() {
+  closeCalendar(false);
   modalOverlay.classList.remove('active');
   editingId = null;
   restoreFocus(modalOpener, btnAdd);
@@ -459,8 +684,8 @@ modalOverlay.addEventListener('click', (e) => {
 
 document.getElementById('btn-save').addEventListener('click', () => {
   const name = inputName.value.trim();
-  const date = inputDate.value;
-  const time = parseTime(inputTime.value);
+  const dateResult = parseDateText(inputDate.value);
+  const timeResult = parseTime(inputTime.value);
 
   if (!name) {
     showFieldError(inputName);
@@ -468,23 +693,23 @@ document.getElementById('btn-save').addEventListener('click', () => {
   }
   clearFieldError(inputName);
 
-  // An unfinished or out of range date leaves the field value empty
-  if (!date || !inputDate.validity.valid) {
-    showFieldError(inputDate, inputDate.validity.badInput || inputDate.validity.rangeOverflow
-      || inputDate.validity.rangeUnderflow ? 'Enter a full, valid date' : 'Pick a date');
+  if (!dateResult || dateResult.error) {
+    showFieldError(inputDate, dateResult ? dateResult.error : 'Pick a date');
     return;
   }
 
-  if (!time) {
-    showFieldError(inputTime, inputTime.value.trim() ? 'Enter a time like 14:30' : 'Enter a time');
+  if (!timeResult) {
+    showFieldError(inputTime, inputTime.value.trim() ? 'Enter a time like 2:30 PM' : 'Enter a time');
     return;
   }
   clearDeadlineErrors();
-  inputTime.value = time;
+  inputDate.value = toDateText(dateResult.date);
+  inputTime.value = toTimeText(timeResult.time);
+  timePeriod = timeResult.period;
 
   // Same "YYYY-MM-DDTHH:mm" format as before. Going through Date turns a
   // time skipped by a clock change into the real one.
-  const datetime = toDatetimeValue(new Date(`${date}T${time}`));
+  const datetime = toDatetimeValue(new Date(`${dateResult.date}T${timeResult.time}`));
 
   const label = inputLabel.value === 'other'
     ? (inputCustomLabel.value.trim() || 'other')
@@ -887,7 +1112,7 @@ document.getElementById('btn-notif-settings').addEventListener('click', () => {
 
 // Export report
 document.getElementById('btn-export').addEventListener('click', () => {
-  const now = new Date().toLocaleString('en-GB');
+  const now = formatDate(new Date());
   const completed = tasks.filter(t => t.completed).length;
   const overdue = tasks.filter(isOverdue).length;
   const active = tasks.length - completed - overdue;
@@ -967,9 +1192,10 @@ function isTypingTarget(el) {
 }
 
 document.addEventListener('keydown', (e) => {
-  // Esc closes whatever is on top: modal, then side menu, then search
+  // Esc closes whatever is on top: calendar, modal, side menu, then search
   if (e.key === 'Escape') {
-    if (modalOverlay.classList.contains('active')) closeModal();
+    if (!calendar.hidden) closeCalendar();
+    else if (modalOverlay.classList.contains('active')) closeModal();
     else if (asideOverlay.classList.contains('active')) closeAside();
     else if (searchBar.classList.contains('active')) closeSearch();
     return;
@@ -985,11 +1211,12 @@ document.addEventListener('keydown', (e) => {
   openModal();
 });
 
-// Enter saves from a text or date field in the modal. Buttons and
-// selects keep their own Enter behaviour, and a held key saves once.
+// Enter saves from a text field in the modal (name, date, time, custom
+// label). Buttons and selects keep their own Enter behaviour, and a held
+// key saves once.
 modalOverlay.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
-  if (!e.target.matches('input[type="text"], input[type="date"]')) return;
+  if (!e.target.matches('input[type="text"]')) return;
   e.preventDefault();
   document.getElementById('btn-save').click();
 });

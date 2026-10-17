@@ -125,15 +125,49 @@
             <input type="text" id="input-name" placeholder="e.g. Finish assignment" />
           </div>
 
-          <!-- DEADLINE: native date picker, 24-hour time field and quick picks -->
+          <!-- DEADLINE: DD/MM/YYYY date with calendar, 12-hour time with AM/PM, quick picks -->
           <fieldset class="form-group deadline">
             <legend>Deadline</legend>
 
             <div class="deadline-fields">
               <div class="deadline-field">
-                <label for="input-date">Date</label>
-                <input type="date" id="input-date" min="1900-01-01" max="9999-12-31"
-                  aria-describedby="deadline-summary deadline-warning deadline-error" />
+                <label for="input-date">Date (DD/MM/YYYY)</label>
+                <div class="input-row" id="date-wrap">
+                  <input type="text" id="input-date" inputmode="numeric" autocomplete="off"
+                    placeholder="DD/MM/YYYY" maxlength="10"
+                    aria-describedby="deadline-summary deadline-warning deadline-error" />
+                  <button type="button" class="input-side-btn" id="btn-calendar"
+                    aria-label="Choose date from calendar" aria-haspopup="dialog"
+                    aria-expanded="false" aria-controls="calendar">
+                    <i data-lucide="calendar"></i>
+                  </button>
+
+                  <div class="calendar" id="calendar" role="dialog" aria-label="Choose date" hidden>
+                    <div class="calendar-header">
+                      <button type="button" class="calendar-nav" id="cal-prev" aria-label="Previous month">
+                        <i data-lucide="chevron-left"></i>
+                      </button>
+                      <span class="calendar-title" id="cal-title" aria-live="polite"></span>
+                      <button type="button" class="calendar-nav" id="cal-next" aria-label="Next month">
+                        <i data-lucide="chevron-right"></i>
+                      </button>
+                    </div>
+                    <table class="calendar-grid" role="grid" aria-labelledby="cal-title">
+                      <thead>
+                        <tr>
+                          <th scope="col" abbr="Monday">Mo</th>
+                          <th scope="col" abbr="Tuesday">Tu</th>
+                          <th scope="col" abbr="Wednesday">We</th>
+                          <th scope="col" abbr="Thursday">Th</th>
+                          <th scope="col" abbr="Friday">Fr</th>
+                          <th scope="col" abbr="Saturday">Sa</th>
+                          <th scope="col" abbr="Sunday">Su</th>
+                        </tr>
+                      </thead>
+                      <tbody id="cal-body"></tbody>
+                    </table>
+                  </div>
+                </div>
                 <div class="quick-picks" role="group" aria-label="Quick dates">
                   <button type="button" class="chip" data-quick-date="today">Today</button>
                   <button type="button" class="chip" data-quick-date="tomorrow">Tomorrow</button>
@@ -142,15 +176,21 @@
               </div>
 
               <div class="deadline-field">
-                <label for="input-time">Time (24-hour)</label>
-                <input type="text" id="input-time" inputmode="numeric" autocomplete="off"
-                  placeholder="HH:MM" maxlength="5"
-                  aria-describedby="deadline-summary deadline-warning deadline-error" />
-                <div class="quick-picks" role="group" aria-label="Quick times">
-                  <button type="button" class="chip" data-quick-time="09:00">09:00</button>
-                  <button type="button" class="chip" data-quick-time="12:00">12:00</button>
-                  <button type="button" class="chip" data-quick-time="17:00">17:00</button>
-                  <button type="button" class="chip" data-quick-time="23:59">23:59</button>
+                <label for="input-time">Time</label>
+                <div class="input-row">
+                  <input type="text" id="input-time" inputmode="decimal" autocomplete="off"
+                    placeholder="e.g. 2:30" maxlength="12"
+                    aria-describedby="deadline-summary deadline-warning deadline-error" />
+                  <div class="ampm" role="group" aria-label="AM or PM">
+                    <button type="button" class="ampm-btn" data-period="AM" aria-pressed="true">AM</button>
+                    <button type="button" class="ampm-btn" data-period="PM" aria-pressed="false">PM</button>
+                  </div>
+                </div>
+                <div class="quick-picks quick-times" role="group" aria-label="Quick times">
+                  <button type="button" class="chip" data-quick-time="09:00">9:00 AM</button>
+                  <button type="button" class="chip" data-quick-time="12:00">12:00 PM</button>
+                  <button type="button" class="chip" data-quick-time="17:00">5:00 PM</button>
+                  <button type="button" class="chip" data-quick-time="23:59">11:59 PM</button>
                 </div>
               </div>
             </div>
