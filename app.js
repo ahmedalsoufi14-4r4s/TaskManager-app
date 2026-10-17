@@ -613,6 +613,9 @@ function applyTheme(theme) {
     Object.entries(themes[theme]).forEach(([name, value]) => {
       root.style.setProperty(name, value);
     });
+    // Browser and installed app title bar match the header
+    document.querySelector('meta[name="theme-color"]')
+      .setAttribute('content', themes[theme]['--surface']);
   } else {
     applyTheme(systemDark.matches ? 'dark' : 'light');
   }
@@ -753,6 +756,12 @@ function init() {
     checkNotifications();
   }, 30000);
   console.log('app loaded', tasks);
+
+  // Offline support. Relative path so it also works under /TaskManager-app/
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .catch(err => console.warn('Service worker not registered', err));
+  }
 }
 
 init();
