@@ -25,6 +25,17 @@ const taskListEl = document.getElementById('task-list');
 const emptyStateEl = document.getElementById('empty-state');
 
 let selectedIds = new Set();
+let currentSort = localStorage.getItem('sort') || 'deadline';
+
+// Order the groups appear in the list
+const GROUPS = [
+  { key: 'overdue',   title: 'Overdue' },
+  { key: 'today',     title: 'Today' },
+  { key: 'upcoming',  title: 'Upcoming' },
+  { key: 'completed', title: 'Completed' },
+];
+
+const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 
 function isLocked(task) {
   return new Date(task.datetime) <= new Date();
@@ -38,6 +49,31 @@ function isOverdue(task) {
 function getStatus(task) {
   if (task.completed) return 'Completed';
   return isOverdue(task) ? 'Overdue' : 'Active';
+}
+
+function isDueToday(task) {
+  return new Date(task.datetime).toDateString() === new Date().toDateString();
+}
+
+function getGroup(task) {
+  if (task.completed) return 'completed';
+  if (isOverdue(task)) return 'overdue';
+  return isDueToday(task) ? 'today' : 'upcoming';
+}
+
+// Tasks without a valid date sort last
+function getTime(task) {
+  const time = new Date(task.datetime).getTime();
+  return Number.isNaN(time) ? Infinity : time;
+}
+
+// Soonest deadline first. Priority sort uses deadline as the tie-break.
+function compareTasks(a, b) {
+  if (currentSort === 'priority') {
+    const diff = (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3);
+    if (diff !== 0) return diff;
+  }
+  return getTime(a) - getTime(b) || 0;
 }
 
 function escapeHTML(str) {
@@ -59,34 +95,49 @@ function renderTasks(filtered = tasks) {
 
   emptyStateEl.style.display = 'none';
 
-  filtered.forEach(task => {
-    const row = document.createElement('div');
-    const locked = isLocked(task);
-    const overdue = isOverdue(task);
+  // One header per group, only for groups that have tasks
+  GROUPS.forEach(group => {
+    const groupTasks = filtered
+      .filter(t => getGroup(t) === group.key)
+      .sort(compareTasks);
+    if (groupTasks.length === 0) return;
 
-    row.className = 'task-row'
-      + (task.completed ? ' completed' : '')
-      + (overdue ? ' overdue' : '')
-      + (selectedIds.has(task.id) ? ' selected' : '');
-    row.dataset.id = task.id;
+    const header = document.createElement('h2');
+    header.className = `group-header group-${group.key}`;
+    header.innerHTML = `${group.title} <span class="group-count">${groupTasks.length}</span>`;
+    taskListEl.appendChild(header);
 
-    row.innerHTML = `
-      <div class="task-info">
-        <span class="task-name">${escapeHTML(task.name)}</span>
-        <span class="task-date">${formatDate(task.datetime)}</span>
-        ${overdue ? '<span class="task-overdue">Overdue</span>' : ''}
-        <span class="task-label" style="background-color: ${getLabelColor(task.label)}">
-          ${escapeHTML(task.label)}
-        </span>
-        <span class="task-priority priority-${task.priority}"></span>
-      </div>
-      <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} ${locked ? 'disabled title="Deadline passed — locked"' : ''} />
-    `;
-
-    taskListEl.appendChild(row);
+    groupTasks.forEach(task => taskListEl.appendChild(renderTaskRow(task)));
   });
 
   lucide.createIcons();
+}
+
+function renderTaskRow(task) {
+  const row = document.createElement('div');
+  const locked = isLocked(task);
+  const overdue = isOverdue(task);
+
+  row.className = 'task-row'
+    + (task.completed ? ' completed' : '')
+    + (overdue ? ' overdue' : '')
+    + (selectedIds.has(task.id) ? ' selected' : '');
+  row.dataset.id = task.id;
+
+  row.innerHTML = `
+    <div class="task-info">
+      <span class="task-name">${escapeHTML(task.name)}</span>
+      <span class="task-date">${formatDate(task.datetime)}</span>
+      ${overdue ? '<span class="task-overdue">Overdue</span>' : ''}
+      <span class="task-label" style="background-color: ${getLabelColor(task.label)}">
+        ${escapeHTML(task.label)}
+      </span>
+      <span class="task-priority priority-${task.priority}"></span>
+    </div>
+    <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} ${locked ? 'disabled title="Deadline passed — locked"' : ''} />
+  `;
+
+  return row;
 }
 
 function formatDate(datetime) {
@@ -373,19 +424,30 @@ function applyFilterAndSearch() {
   renderTasks(filtered);
 }
 
+// ─── SORT ────────────────────────────────────────────
+
+// Sorts inside each group. The choice is remembered.
+const sortSelect = document.getElementById('sort-select');
+sortSelect.value = currentSort;
+
+sortSelect.addEventListener('change', () => {
+  currentSort = sortSelect.value;
+  localStorage.setItem('sort', currentSort);
+  applyFilterAndSearch();
+});
+
 // ─── OVERDUE AUTO-LOCK ───────────────────────────────
 
 // A task whose deadline has passed gets its checkbox disabled in
 // renderTasks() (see isLocked()). Overdue is never saved; this only
-// tracks which tasks are overdue so the list re-renders when one
-// crosses its deadline.
-let overdueIds = new Set();
+// tracks which group each task is in so the list re-renders when one
+// crosses its deadline or moves into Today at midnight.
+let lastGroups = '';
 
 function updateOverdueTasks() {
-  const current = new Set(tasks.filter(isOverdue).map(t => t.id));
-  const changed = current.size !== overdueIds.size
-    || [...current].some(id => !overdueIds.has(id));
-  overdueIds = current;
+  const current = tasks.map(t => `${t.id}:${getGroup(t)}`).join(',');
+  const changed = current !== lastGroups;
+  lastGroups = current;
   return changed;
 }
 

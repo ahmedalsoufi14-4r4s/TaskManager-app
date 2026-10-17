@@ -435,6 +435,77 @@ body {
   font-weight: 700;
 }
 
+/* ── List toolbar ── */
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--bg-text);
+}
+
+/* Small pill dropdown used for sort and filters */
+.toolbar-select {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--bg-line);
+  border-radius: 999px;
+  color: var(--bg-text);
+  font-family: var(--font);
+  font-size: 14px;
+  padding: 7px 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.toolbar-select:focus-visible {
+  border-color: var(--primary);
+}
+
+.toolbar-select option {
+  background-color: var(--bg-deep);
+  color: var(--bg-text);
+}
+
+/* ── Task groups ── */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bg-text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 24px 0 10px;
+}
+
+.group-header:first-child {
+  margin-top: 4px;
+}
+
+.group-count {
+  font-size: 12px;
+  letter-spacing: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--bg-line);
+}
+
+.group-overdue .group-count {
+  background-color: var(--overdue);
+  color: #fff;
+}
+
 /* ── Aside overlay ── */
 .aside-overlay {
   display: none;
