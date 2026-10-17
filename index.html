@@ -125,10 +125,42 @@
             <input type="text" id="input-name" placeholder="e.g. Finish assignment" />
           </div>
 
-          <div class="form-group">
-            <label for="input-datetime">Date & time</label>
-            <input type="datetime-local" id="input-datetime" />
-          </div>
+          <!-- DEADLINE: native date picker, 24-hour time field and quick picks -->
+          <fieldset class="form-group deadline">
+            <legend>Deadline</legend>
+
+            <div class="deadline-fields">
+              <div class="deadline-field">
+                <label for="input-date">Date</label>
+                <input type="date" id="input-date" min="1900-01-01" max="9999-12-31"
+                  aria-describedby="deadline-summary deadline-warning deadline-error" />
+                <div class="quick-picks" role="group" aria-label="Quick dates">
+                  <button type="button" class="chip" data-quick-date="today">Today</button>
+                  <button type="button" class="chip" data-quick-date="tomorrow">Tomorrow</button>
+                  <button type="button" class="chip" data-quick-date="next-week">Next week</button>
+                </div>
+              </div>
+
+              <div class="deadline-field">
+                <label for="input-time">Time (24-hour)</label>
+                <input type="text" id="input-time" inputmode="numeric" autocomplete="off"
+                  placeholder="HH:MM" maxlength="5"
+                  aria-describedby="deadline-summary deadline-warning deadline-error" />
+                <div class="quick-picks" role="group" aria-label="Quick times">
+                  <button type="button" class="chip" data-quick-time="09:00">09:00</button>
+                  <button type="button" class="chip" data-quick-time="12:00">12:00</button>
+                  <button type="button" class="chip" data-quick-time="17:00">17:00</button>
+                  <button type="button" class="chip" data-quick-time="23:59">23:59</button>
+                </div>
+              </div>
+            </div>
+
+            <p class="deadline-summary" id="deadline-summary" aria-live="polite"></p>
+            <p class="deadline-note deadline-warning" id="deadline-warning" hidden>
+              This time has passed, so the task will be overdue right away.
+            </p>
+            <p class="deadline-note deadline-error" id="deadline-error" role="alert" hidden></p>
+          </fieldset>
 
           <div class="form-group">
             <label for="input-label">Label</label>

@@ -22,6 +22,7 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - Filter by label (custom labels included) and priority, combined with status and search
 - Installable as an app (PWA) and works offline
 - Keyboard shortcuts: N for a new task, Enter to save, Esc to close
+- Quick deadline entry: date picker, 24-hour time field, Today / Tomorrow / Next week and time buttons, with a preview and a warning for past times
 
 ## Tech stack
 

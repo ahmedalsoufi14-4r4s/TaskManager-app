@@ -153,6 +153,7 @@ function renderTaskRow(task) {
 function formatDate(datetime) {
   if (!datetime) return '';
   const d = new Date(datetime);
+  if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
@@ -161,7 +162,7 @@ function formatDate(datetime) {
 
 // Exact timestamp for the tooltip
 function formatFullDate(datetime) {
-  if (!datetime) return '';
+  if (!datetime || Number.isNaN(new Date(datetime).getTime())) return '';
   return new Date(datetime).toLocaleString('en-GB', {
     dateStyle: 'full', timeStyle: 'short'
   });
@@ -212,7 +213,11 @@ function getLabelColor(label) {
 const modalOverlay      = document.getElementById('modal-overlay');
 const modalTitle        = document.getElementById('modal-title');
 const inputName         = document.getElementById('input-name');
-const inputDatetime     = document.getElementById('input-datetime');
+const inputDate         = document.getElementById('input-date');
+const inputTime         = document.getElementById('input-time');
+const deadlineSummary   = document.getElementById('deadline-summary');
+const deadlineWarning   = document.getElementById('deadline-warning');
+const deadlineError     = document.getElementById('deadline-error');
 const inputLabel        = document.getElementById('input-label');
 const inputCustomLabel  = document.getElementById('input-custom-label');
 const customLabelGroup  = document.getElementById('custom-label-group');
@@ -220,6 +225,7 @@ const inputPriority     = document.getElementById('input-priority');
 const btnAdd            = document.getElementById('btn-add');
 
 let editingId = null;
+let editingCompleted = false;
 let modalOpener = null;
 
 // Puts focus back on an element, or on the fallback if that element is
@@ -230,14 +236,156 @@ function restoreFocus(el, fallback) {
   (usable ? el : fallback).focus();
 }
 
+// ── Deadline input ──
+// Tasks store the deadline as a local "YYYY-MM-DDTHH:mm" string. The
+// modal splits it into a date field and a 24-hour time field.
+
+const pad = n => String(n).padStart(2, '0');
+
+function toDateValue(d) {
+  return `${String(d.getFullYear()).padStart(4, '0')}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function toDatetimeValue(d) {
+  return `${toDateValue(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Accepts 14:30, 1430, 930, 9.30 or 9 and returns "HH:MM", or null
+function parseTime(text) {
+  const t = text.trim().replace('.', ':');
+  const m = t.match(/^(\d{1,2}):(\d{2})$/) || t.match(/^(\d{1,2})(\d{2})$/) || t.match(/^(\d{1,2})$/);
+  if (!m) return null;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2] || 0);
+  if (hours > 23 || minutes > 59) return null;
+  return `${pad(hours)}:${pad(minutes)}`;
+}
+
+// Today, tomorrow, or next Monday ("next week")
+function quickDate(key) {
+  const d = new Date();
+  if (key === 'tomorrow') d.setDate(d.getDate() + 1);
+  if (key === 'next-week') d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+  return toDateValue(d);
+}
+
+// New tasks start at the next full hour (after 23:00 that is tomorrow)
+function defaultDeadline() {
+  const d = new Date();
+  d.setHours(d.getHours() + 1, 0, 0, 0);
+  return toDatetimeValue(d);
+}
+
+function setDeadline(datetime) {
+  const valid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(datetime || '');
+  inputDate.value = valid ? datetime.slice(0, 10) : '';
+  inputTime.value = valid ? datetime.slice(11, 16) : '';
+  updateDeadlineSummary();
+}
+
+// Shows the chosen deadline in the list's format, warns about past
+// times, and marks the matching quick pick buttons
+function updateDeadlineSummary() {
+  const date = inputDate.value;
+  const time = parseTime(inputTime.value);
+
+  document.querySelectorAll('[data-quick-date]').forEach(chip => {
+    chip.setAttribute('aria-pressed', String(quickDate(chip.dataset.quickDate) === date));
+  });
+  document.querySelectorAll('[data-quick-time]').forEach(chip => {
+    chip.setAttribute('aria-pressed', String(chip.dataset.quickTime === time));
+  });
+
+  if (!date || !time) {
+    deadlineSummary.textContent = 'Pick a date and a time';
+    deadlineWarning.hidden = true;
+    return;
+  }
+
+  const task = { datetime: `${date}T${time}`, completed: editingCompleted };
+  const due = new Date(task.datetime);
+  const weekday = due.toLocaleDateString('en-GB', { weekday: 'short' });
+  let text = `Due ${weekday} ${formatDate(task.datetime)} · ${formatRelative(task)}`;
+  // A time skipped by a clock change (e.g. 02:30) moves to the real one
+  const realTime = `${pad(due.getHours())}:${pad(due.getMinutes())}`;
+  if (realTime !== time) text += ` (clocks change, so ${time} becomes ${realTime})`;
+  deadlineSummary.textContent = text;
+  deadlineWarning.hidden = !isOverdue(task);
+}
+
+function showFieldError(field, message = '') {
+  field.style.borderColor = '#EF4444';
+  field.setAttribute('aria-invalid', 'true');
+  if (message) {
+    deadlineError.textContent = message;
+    deadlineError.hidden = false;
+  }
+  field.focus();
+}
+
+function clearFieldError(field) {
+  field.style.borderColor = '';
+  field.removeAttribute('aria-invalid');
+}
+
+function clearDeadlineErrors() {
+  clearFieldError(inputDate);
+  clearFieldError(inputTime);
+  deadlineError.hidden = true;
+}
+
+document.querySelectorAll('[data-quick-date]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    inputDate.value = quickDate(chip.dataset.quickDate);
+    clearDeadlineErrors();
+    updateDeadlineSummary();
+  });
+});
+
+// A quick time with no date yet means today
+document.querySelectorAll('[data-quick-time]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    inputTime.value = chip.dataset.quickTime;
+    if (!inputDate.value) inputDate.value = quickDate('today');
+    clearDeadlineErrors();
+    updateDeadlineSummary();
+  });
+});
+
+[inputDate, inputTime].forEach(field => {
+  field.addEventListener('input', () => {
+    clearDeadlineErrors();
+    updateDeadlineSummary();
+  });
+});
+
+// Tidy a typed time such as "930" into "09:30" when leaving the field
+inputTime.addEventListener('blur', () => {
+  const time = parseTime(inputTime.value);
+  if (time) inputTime.value = time;
+});
+
+inputName.addEventListener('input', () => clearFieldError(inputName));
+
 function openModal(task = null) {
   modalOpener = document.activeElement;
   editingId = task ? task.id : null;
+  editingCompleted = task ? task.completed : false;
   modalTitle.textContent = task ? 'Edit Task' : 'Add Task';
 
+  // Cancel and reopen always starts clean
+  clearFieldError(inputName);
+  clearDeadlineErrors();
+
   inputName.value      = task ? task.name : '';
-  inputDatetime.value  = task ? task.datetime : '';
   inputPriority.value  = task ? task.priority : 'low';
+  setDeadline(task ? task.datetime : defaultDeadline());
+
+  // Tooltips with the real dates behind the quick date buttons
+  document.querySelectorAll('[data-quick-date]').forEach(chip => {
+    chip.title = new Date(`${quickDate(chip.dataset.quickDate)}T00:00`)
+      .toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  });
 
   const knownLabels = ['university', 'work', 'personal', 'health'];
   if (task && !knownLabels.includes(task.label)) {
@@ -311,21 +459,32 @@ modalOverlay.addEventListener('click', (e) => {
 
 document.getElementById('btn-save').addEventListener('click', () => {
   const name = inputName.value.trim();
-  const datetime = inputDatetime.value;
+  const date = inputDate.value;
+  const time = parseTime(inputTime.value);
 
   if (!name) {
-    inputName.style.borderColor = '#EF4444';
-    inputName.focus();
+    showFieldError(inputName);
     return;
   }
-  inputName.style.borderColor = '';
+  clearFieldError(inputName);
 
-  if (!datetime) {
-    inputDatetime.style.borderColor = '#EF4444';
-    inputDatetime.focus();
+  // An unfinished or out of range date leaves the field value empty
+  if (!date || !inputDate.validity.valid) {
+    showFieldError(inputDate, inputDate.validity.badInput || inputDate.validity.rangeOverflow
+      || inputDate.validity.rangeUnderflow ? 'Enter a full, valid date' : 'Pick a date');
     return;
   }
-  inputDatetime.style.borderColor = '';
+
+  if (!time) {
+    showFieldError(inputTime, inputTime.value.trim() ? 'Enter a time like 14:30' : 'Enter a time');
+    return;
+  }
+  clearDeadlineErrors();
+  inputTime.value = time;
+
+  // Same "YYYY-MM-DDTHH:mm" format as before. Going through Date turns a
+  // time skipped by a clock change into the real one.
+  const datetime = toDatetimeValue(new Date(`${date}T${time}`));
 
   const label = inputLabel.value === 'other'
     ? (inputCustomLabel.value.trim() || 'other')
@@ -830,7 +989,7 @@ document.addEventListener('keydown', (e) => {
 // selects keep their own Enter behaviour, and a held key saves once.
 modalOverlay.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
-  if (!e.target.matches('input[type="text"], input[type="datetime-local"]')) return;
+  if (!e.target.matches('input[type="text"], input[type="date"]')) return;
   e.preventDefault();
   document.getElementById('btn-save').click();
 });

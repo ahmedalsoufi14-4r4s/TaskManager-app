@@ -191,6 +191,12 @@ button:focus-visible,
   color: var(--primary);
 }
 
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -228,6 +234,112 @@ button:focus-visible,
 }
 
 #custom-label-group {
+  display: none;
+}
+
+/* ── Deadline input ── */
+.deadline {
+  border: none;
+  min-width: 0;
+}
+
+.deadline legend {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.deadline-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.deadline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.deadline .deadline-field label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.deadline input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+
+/* Light calendar icon and picker on the dark teal modal */
+.deadline input[type="date"] {
+  color-scheme: dark;
+}
+
+.deadline input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.quick-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  background-color: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 32px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.chip:hover {
+  background-color: rgba(255,255,255,0.14);
+}
+
+.chip[aria-pressed="true"] {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: #1e1600;
+}
+
+.deadline-summary {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.deadline-note {
+  font-size: 13px;
+  padding: 7px 10px;
+  border-left: 3px solid;
+  border-radius: 6px;
+  background-color: rgba(0,0,0,0.18);
+}
+
+.deadline-warning {
+  color: #fff3bf;
+  border-left-color: var(--primary);
+}
+
+.deadline-error {
+  color: #ffffff;
+  border-left-color: #ff6b6b;
+}
+
+.deadline-note[hidden] {
   display: none;
 }
 
@@ -882,6 +994,17 @@ kbd {
 
   .modal-footer {
     flex-direction: column-reverse;
+  }
+
+  /* Date and time stacked, with finger-sized quick picks */
+  .deadline-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .chip {
+    min-height: 44px;
+    padding: 8px 14px;
+    flex: 1 1 auto;
   }
 
   .btn-primary,
