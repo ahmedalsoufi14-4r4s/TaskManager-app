@@ -372,8 +372,7 @@ taskListEl.addEventListener('click', (e) => {
   applyFilterAndSearch();
 });
 
-// The checkbox only ever toggles "completed" — it no longer drives
-// selection for edit/delete.
+// The checkbox only toggles "completed"; clicking the row selects it.
 taskListEl.addEventListener('change', (e) => {
   if (!e.target.classList.contains('task-checkbox')) return;
   const id = e.target.closest('.task-row').dataset.id;
@@ -535,7 +534,7 @@ function applyFilterAndSearch() {
   }
 
   // Tasks hidden by a filter or search (or deleted) leave the
-  // selection, so Delete never removes something you can't see
+  // selection, so Delete never removes a hidden task
   const visibleIds = new Set(filtered.map(t => t.id));
   selectedIds = new Set([...selectedIds].filter(id => visibleIds.has(id)));
 
@@ -851,7 +850,6 @@ function init() {
     else refreshRelativeTimes();
     checkNotifications();
   }, 30000);
-  console.log('app loaded', tasks);
 
   // Offline support. Relative path so it also works under /TaskManager-app/
   if ('serviceWorker' in navigator) {
