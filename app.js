@@ -199,6 +199,8 @@ document.getElementById('btn-save').addEventListener('click', () => {
   if (editingId) {
     const existing = tasks.find(t => t.id === editingId);
     taskData.completed = existing ? existing.completed : false;
+    // New deadline means a new reminder
+    if (existing && existing.datetime !== datetime) clearNotified(editingId);
     tasks = tasks.map(t => t.id === editingId ? taskData : t);
   } else {
     tasks.push(taskData);
@@ -399,6 +401,39 @@ prefNotif.addEventListener('change', async () => {
   localStorage.setItem('notifications', prefNotif.checked);
 });
 
+// Remind 15 minutes before a deadline, once per task. Notified ids are
+// kept in localStorage so a reload does not notify again.
+const NOTIFY_BEFORE_MS = 15 * 60 * 1000;
+let notifiedIds = new Set(JSON.parse(localStorage.getItem('notifiedIds') || '[]'));
+
+function saveNotifiedIds() {
+  localStorage.setItem('notifiedIds', JSON.stringify([...notifiedIds]));
+}
+
+function clearNotified(id) {
+  if (notifiedIds.delete(id)) saveNotifiedIds();
+}
+
+function checkNotifications() {
+  if (localStorage.getItem('notifications') !== 'true') return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const now = Date.now();
+  let changed = false;
+  tasks.forEach(t => {
+    if (t.completed || notifiedIds.has(t.id)) return;
+    const due = new Date(t.datetime).getTime();
+    if (due > now && due - now <= NOTIFY_BEFORE_MS) {
+      new Notification('Task due soon', {
+        body: `${t.name} is due at ${formatDate(t.datetime)}`
+      });
+      notifiedIds.add(t.id);
+      changed = true;
+    }
+  });
+  if (changed) saveNotifiedIds();
+}
+
 document.getElementById('btn-notif-settings').addEventListener('click', () => {
   alert('To manage notifications, go to your browser settings and search for "Notifications" under site permissions for this page.');
 });
@@ -478,9 +513,11 @@ function init() {
   applyFilterAndSearch();
   lucide.createIcons();
   // Re-check deadlines every 30s so a task locks itself the moment it
-  // becomes overdue, without needing a manual reload.
+  // becomes overdue, without needing a manual reload. Reminders are
+  // sent from the same check.
   setInterval(() => {
     if (updateOverdueTasks()) applyFilterAndSearch();
+    checkNotifications();
   }, 30000);
   console.log('app loaded', tasks);
 }
