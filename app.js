@@ -127,8 +127,8 @@ function renderTaskRow(task) {
   row.innerHTML = `
     <div class="task-info">
       <span class="task-name">${escapeHTML(task.name)}</span>
-      <span class="task-date">${formatDate(task.datetime)}</span>
-      ${overdue ? '<span class="task-overdue">Overdue</span>' : ''}
+      <span class="task-date" title="${formatFullDate(task.datetime)}">${formatDate(task.datetime)}</span>
+      <span class="task-relative${overdue ? ' task-overdue' : ''}" title="${formatFullDate(task.datetime)}">${formatRelative(task)}</span>
       <span class="task-label" style="background-color: ${getLabelColor(task.label)}">
         ${escapeHTML(task.label)}
       </span>
@@ -146,6 +146,43 @@ function formatDate(datetime) {
   return d.toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// Exact timestamp for the tooltip
+function formatFullDate(datetime) {
+  if (!datetime) return '';
+  return new Date(datetime).toLocaleString('en-GB', {
+    dateStyle: 'full', timeStyle: 'short'
+  });
+}
+
+// Short label like "in 2 h", "in 3 days" or "overdue by 1 day"
+function formatRelative(task) {
+  const time = getTime(task);
+  if (time === Infinity) return '';
+
+  // Rounded to the nearest unit, so 5 h 50 min reads "6 h"
+  const diff = time - Date.now();
+  const minutes = Math.round(Math.abs(diff) / 60000);
+  const hours = Math.round(minutes / 60);
+  const days = Math.round(hours / 24);
+
+  let amount;
+  if (minutes < 1) amount = '<1 min';
+  else if (minutes < 60) amount = `${minutes} min`;
+  else if (hours < 24) amount = `${hours} h`;
+  else amount = `${days} ${days === 1 ? 'day' : 'days'}`;
+
+  if (diff > 0) return `in ${amount}`;
+  return isOverdue(task) ? `overdue by ${amount}` : `${amount} ago`;
+}
+
+// Updates the relative labels in place, so selection and hover stay put
+function refreshRelativeTimes() {
+  taskListEl.querySelectorAll('.task-row').forEach(row => {
+    const task = tasks.find(t => t.id === row.dataset.id);
+    if (task) row.querySelector('.task-relative').textContent = formatRelative(task);
   });
 }
 
@@ -647,10 +684,11 @@ function init() {
   applyFilterAndSearch();
   lucide.createIcons();
   // Re-check deadlines every 30s so a task locks itself the moment it
-  // becomes overdue, without needing a manual reload. Reminders are
-  // sent from the same check.
+  // becomes overdue, without needing a manual reload. Relative due
+  // times and reminders are updated from the same check.
   setInterval(() => {
     if (updateOverdueTasks()) applyFilterAndSearch();
+    else refreshRelativeTimes();
     checkNotifications();
   }, 30000);
   console.log('app loaded', tasks);

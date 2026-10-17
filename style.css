@@ -288,14 +288,26 @@ body {
   box-shadow: inset 4px 0 0 var(--overdue), var(--shadow-md);
 }
 
-.task-overdue {
+/* Relative due time, e.g. "in 2 h" */
+.task-relative {
   font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background-color: rgba(0,0,0,0.18);
+  padding: 4px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.task-relative:empty {
+  display: none;
+}
+
+.task-relative.task-overdue {
   font-weight: 700;
   color: #fff;
   background-color: var(--overdue);
-  padding: 4px 11px;
-  border-radius: 999px;
-  flex-shrink: 0;
 }
 
 .task-info {
