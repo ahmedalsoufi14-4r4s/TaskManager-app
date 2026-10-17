@@ -196,12 +196,13 @@ function refreshRelativeTimes() {
   });
 }
 
+// Dark enough for white pill text (at least 5:1)
 function getLabelColor(label) {
   const colors = {
-    university: '#3B82F6',
-    work:       '#F97316',
-    personal:   '#A855F7',
-    health:     '#22C55E',
+    university: '#2563EB',
+    work:       '#C2410C',
+    personal:   '#9333EA',
+    health:     '#15803D',
   };
   return colors[label] || '#6B7280';
 }
@@ -633,12 +634,12 @@ const themes = {
   dark: {
     '--bg':            '#846358',
     '--bg-deep':       '#5c4138',
-    '--surface':       '#0c8599',
-    '--surface-hi':    '#0e9bb3',
+    '--surface':       '#0a7285',
+    '--surface-hi':    '#0c8599',
     '--text':          '#ffffff',
-    '--text-muted':    '#f783ac',
+    '--text-muted':    '#ffdfeb',
     '--bg-text':       '#ffffff',
-    '--bg-text-muted': '#f783ac',
+    '--bg-text-muted': '#ffe5ef',
     '--bg-line':       'rgba(255,255,255,0.2)',
     '--bg-focus':      '#ffd43b',
   },

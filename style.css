@@ -7,24 +7,24 @@
 }
 
 :root {
-  --bg:         #6e4f45;
+  --bg:         #846358;
   --bg-deep:    #5c4138;
-  --surface:    #0c8599;
-  --surface-hi: #0e9bb3;
+  --surface:    #0a7285;
+  --surface-hi: #0c8599;
   --primary:    #ffd43b;
   --text:       #ffffff;
-  --text-muted: #f8a8c4;
+  --text-muted: #ffdfeb;
 
   /* Text and borders drawn straight on the page background */
   --bg-text:       #ffffff;
-  --bg-text-muted: #f8a8c4;
+  --bg-text-muted: #ffe5ef;
   --bg-line:       rgba(255,255,255,0.2);
   --bg-focus:      #ffd43b;
 
-  --label-university: #3B82F6;
-  --label-work:       #F97316;
-  --label-personal:   #A855F7;
-  --label-health:     #22C55E;
+  --label-university: #2563EB;
+  --label-work:       #C2410C;
+  --label-personal:   #9333EA;
+  --label-health:     #15803D;
   --label-custom:     #6B7280;
 
   --priority-high:   #EF4444;
