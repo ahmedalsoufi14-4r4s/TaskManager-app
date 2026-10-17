@@ -459,6 +459,7 @@ function applyFilterAndSearch() {
   }
 
   renderTasks(filtered);
+  renderStats();
 }
 
 // ─── SORT ────────────────────────────────────────────
@@ -472,6 +473,25 @@ sortSelect.addEventListener('change', () => {
   localStorage.setItem('sort', currentSort);
   applyFilterAndSearch();
 });
+
+// ─── STATS ───────────────────────────────────────────
+
+const statsText   = document.getElementById('stats-text');
+const progressEl  = document.getElementById('progress');
+const progressBar = document.getElementById('progress-bar');
+
+// Progress for tasks due today, counted over all tasks (not the filtered list)
+function renderStats() {
+  const dueToday = tasks.filter(isDueToday);
+  const done = dueToday.filter(t => t.completed).length;
+  const percent = dueToday.length ? Math.round(done / dueToday.length * 100) : 0;
+
+  statsText.textContent = dueToday.length
+    ? `${done} of ${dueToday.length} done today`
+    : 'Nothing due today';
+  progressBar.style.width = `${percent}%`;
+  progressEl.setAttribute('aria-valuenow', percent);
+}
 
 // ─── OVERDUE AUTO-LOCK ───────────────────────────────
 

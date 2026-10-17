@@ -457,6 +457,37 @@ body {
   flex-wrap: wrap;
 }
 
+/* Today's progress */
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+  max-width: 320px;
+}
+
+.stats-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bg-text);
+}
+
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background-color: var(--bg-line);
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--primary);
+  transition: width 0.3s;
+}
+
 .sort-control {
   display: flex;
   align-items: center;
