@@ -557,6 +557,58 @@ body {
   text-align: center;
 }
 
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 20px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  font-size: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 300;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.toast.active {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.toast-action {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toast-action::before {
+  content: '·';
+  display: inline-block;
+  color: var(--text-muted);
+  margin-right: 10px;
+}
+
+.toast-action:hover {
+  text-decoration: underline;
+}
+
 /* ══════════════ RESPONSIVE ══════════════ */
 
 /* Tablet / iPad */

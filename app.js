@@ -154,6 +154,39 @@ inputLabel.addEventListener('change', () => {
     inputLabel.value === 'other' ? 'flex' : 'none';
 });
 
+// ─── TOAST ───────────────────────────────────────────
+
+const toastEl      = document.getElementById('toast');
+const toastMessage = document.getElementById('toast-message');
+const toastAction  = document.getElementById('toast-action');
+
+let toastTimer = null;
+let toastCallback = null;
+
+// Short message at the bottom of the screen, with an optional action
+// button (used for Undo). Hides itself after 6 seconds.
+function showToast(message, actionLabel = null, onAction = null) {
+  toastMessage.textContent = message;
+  toastAction.textContent = actionLabel || '';
+  toastAction.style.display = actionLabel ? '' : 'none';
+  toastCallback = onAction;
+  toastEl.classList.add('active');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 6000);
+}
+
+function hideToast() {
+  toastEl.classList.remove('active');
+  toastCallback = null;
+}
+
+toastAction.addEventListener('click', () => {
+  const callback = toastCallback;
+  clearTimeout(toastTimer);
+  hideToast();
+  if (callback) callback();
+});
+
 // ─── EVENTS ──────────────────────────────────────────
 
 document.getElementById('btn-add').addEventListener('click', () => openModal());
@@ -241,11 +274,11 @@ taskListEl.addEventListener('change', (e) => {
 
 document.getElementById('btn-edit').addEventListener('click', () => {
   if (selectedIds.size === 0) {
-    alert('Click a task first to select it.');
+    showToast('Click a task first to select it.');
     return;
   }
   if (selectedIds.size > 1) {
-    alert('Select only one task to edit.');
+    showToast('Select only one task to edit.');
     return;
   }
   const id = [...selectedIds][0];
@@ -255,10 +288,22 @@ document.getElementById('btn-edit').addEventListener('click', () => {
 
 document.getElementById('btn-delete').addEventListener('click', () => {
   if (selectedIds.size === 0) return;
+  // Keep each task's index so undo can put it back in place
+  const removed = tasks
+    .map((task, index) => ({ task, index }))
+    .filter(({ task }) => selectedIds.has(task.id));
   tasks = tasks.filter(t => !selectedIds.has(t.id));
   selectedIds.clear();
   saveTasks();
   applyFilterAndSearch();
+
+  const count = removed.length;
+  showToast(`${count} ${count === 1 ? 'task' : 'tasks'} deleted`, 'Undo', () => {
+    removed.forEach(({ task, index }) => tasks.splice(index, 0, task));
+    saveTasks();
+    updateOverdueTasks();
+    applyFilterAndSearch();
+  });
 });
 
 document.getElementById('btn-reload').addEventListener('click', () => {
@@ -435,7 +480,7 @@ function checkNotifications() {
 }
 
 document.getElementById('btn-notif-settings').addEventListener('click', () => {
-  alert('To manage notifications, go to your browser settings and search for "Notifications" under site permissions for this page.');
+  showToast('To manage notifications, go to your browser settings and search for "Notifications" under site permissions for this page.');
 });
 
 // Export report
@@ -486,9 +531,9 @@ document.getElementById('restore-file-input').addEventListener('change', (e) => 
       updateOverdueTasks();
       applyFilterAndSearch();
       closeAside();
-      alert(`Restored ${tasks.length} tasks successfully.`);
+      showToast(`Restored ${tasks.length} tasks successfully.`);
     } catch {
-      alert('Invalid backup file. Please use a valid tasks-backup.json file.');
+      showToast('Invalid backup file. Please use a valid tasks-backup.json file.');
     }
   };
   reader.readAsText(file);
