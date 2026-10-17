@@ -404,6 +404,35 @@ asideOverlay.addEventListener('click', (e) => {
 });
 
 // Theme
+// Every colour variable each theme sets. --bg-text, --bg-text-muted and
+// --bg-line are for things drawn straight on the page background.
+const themes = {
+  light: {
+    '--bg':            '#eef3f4',
+    '--bg-deep':       '#d9e4e6',
+    '--surface':       '#0a7080',
+    '--surface-hi':    '#0b7f91',
+    '--text':          '#ffffff',
+    '--text-muted':    '#d2eef2',
+    '--bg-text':       '#16313a',
+    '--bg-text-muted': '#4a636b',
+    '--bg-line':       'rgba(0,0,0,0.2)',
+  },
+  dark: {
+    '--bg':            '#846358',
+    '--bg-deep':       '#5c4138',
+    '--surface':       '#0c8599',
+    '--surface-hi':    '#0e9bb3',
+    '--text':          '#ffffff',
+    '--text-muted':    '#f783ac',
+    '--bg-text':       '#ffffff',
+    '--bg-text-muted': '#f783ac',
+    '--bg-line':       'rgba(255,255,255,0.2)',
+  },
+};
+
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
 const prefTheme = document.getElementById('pref-theme');
 prefTheme.value = localStorage.getItem('theme') || 'system';
 applyTheme(prefTheme.value);
@@ -413,21 +442,19 @@ prefTheme.addEventListener('change', () => {
   applyTheme(prefTheme.value);
 });
 
+// Follow OS changes while "System default" is selected
+systemDark.addEventListener('change', () => {
+  if (prefTheme.value === 'system') applyTheme('system');
+});
+
 function applyTheme(theme) {
   const root = document.documentElement;
-  if (theme === 'light') {
-    root.style.setProperty('--bg', '#f5f5f5');
-    root.style.setProperty('--surface', '#0a7080');
-    root.style.setProperty('--text', '#1e1e1e');
-    root.style.setProperty('--text-muted', '#c2587e');
-  } else if (theme === 'dark') {
-    root.style.setProperty('--bg', '#846358');
-    root.style.setProperty('--surface', '#0c8599');
-    root.style.setProperty('--text', '#ffffff');
-    root.style.setProperty('--text-muted', '#f783ac');
+  if (theme === 'light' || theme === 'dark') {
+    Object.entries(themes[theme]).forEach(([name, value]) => {
+      root.style.setProperty(name, value);
+    });
   } else {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    applyTheme(prefersDark ? 'dark' : 'light');
+    applyTheme(systemDark.matches ? 'dark' : 'light');
   }
 }
 

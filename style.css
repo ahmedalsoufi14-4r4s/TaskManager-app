@@ -15,6 +15,11 @@
   --text:       #ffffff;
   --text-muted: #f8a8c4;
 
+  /* Text and borders drawn straight on the page background */
+  --bg-text:       #ffffff;
+  --bg-text-muted: #f8a8c4;
+  --bg-line:       rgba(255,255,255,0.2);
+
   --label-university: #3B82F6;
   --label-work:       #F97316;
   --label-personal:   #A855F7;
@@ -107,7 +112,7 @@ body {
 .empty-state {
   text-align: center;
   margin-top: 100px;
-  color: var(--text-muted);
+  color: var(--bg-text-muted);
   font-size: 16px;
 }
 
@@ -187,6 +192,7 @@ body {
 
 .form-group select option {
   background-color: var(--bg-deep);
+  color: var(--bg-text);
 }
 
 #custom-label-group {
@@ -408,9 +414,9 @@ body {
 
 .filter-btn {
   background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid var(--bg-line);
   border-radius: 999px;
-  color: var(--text);
+  color: var(--bg-text);
   font-family: var(--font);
   font-size: 14px;
   padding: 7px 18px;
