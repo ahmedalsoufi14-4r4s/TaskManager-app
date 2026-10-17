@@ -15,8 +15,15 @@ function saveTasks() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
+// Random UUID, with a fallback where crypto.randomUUID is missing (old
+// browsers, plain http). Older tasks keep their numeric string ids.
 function generateId() {
-  return Date.now().toString();
+  if (window.crypto && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return Date.now().toString(36)
+    + Math.random().toString(36).slice(2, 10)
+    + Math.random().toString(36).slice(2, 10);
 }
 
 // ─── RENDER ──────────────────────────────────────────
@@ -761,7 +768,14 @@ document.getElementById('restore-file-input').addEventListener('change', (e) => 
     try {
       const restored = JSON.parse(event.target.result);
       if (!Array.isArray(restored)) throw new Error();
-      tasks = restored.map(t => ({ ...t, completed: t.completed ?? false }));
+      // Ids are kept as strings; a missing or duplicate id gets a new one
+      const seenIds = new Set();
+      tasks = restored.map(t => {
+        let id = t.id == null || t.id === '' ? '' : String(t.id);
+        if (!id || seenIds.has(id)) id = generateId();
+        seenIds.add(id);
+        return { ...t, id, completed: t.completed ?? false };
+      });
       selectedIds.clear();
       saveTasks();
       updateOverdueTasks();
