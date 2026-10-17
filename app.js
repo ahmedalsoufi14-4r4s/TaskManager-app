@@ -89,6 +89,9 @@ function renderTasks(filtered = tasks) {
   taskListEl.innerHTML = '';
 
   if (filtered.length === 0) {
+    emptyStateEl.querySelector('p').textContent = tasks.length
+      ? 'No tasks match your filters'
+      : 'No tasks yet, click on the + to add one';
     emptyStateEl.style.display = 'block';
     return;
   }
@@ -441,8 +444,38 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
   });
 });
 
+const filterLabel    = document.getElementById('filter-label');
+const filterPriority = document.getElementById('filter-priority');
+
+filterLabel.addEventListener('change', applyFilterAndSearch);
+filterPriority.addEventListener('change', applyFilterAndSearch);
+
+// Same capitalisation the label pills get from CSS
+function formatLabel(label) {
+  return label.replace(/(^|\s)\S/g, c => c.toUpperCase());
+}
+
+// Label options come from the labels in use, custom ones included. The
+// selected label stays in the list even if no task uses it any more.
+function updateLabelOptions() {
+  const selected = filterLabel.value;
+  const labels = [...new Set(tasks.map(t => t.label).filter(Boolean))];
+  if (selected !== 'all' && !labels.includes(selected)) labels.push(selected);
+  labels.sort((a, b) => a.localeCompare(b));
+
+  filterLabel.innerHTML = '<option value="all">All labels</option>'
+    + labels.map(l => `<option value="${escapeHTML(l)}">${escapeHTML(formatLabel(l))}</option>`).join('');
+  filterLabel.value = selected;
+}
+
 function applyFilterAndSearch() {
   const query = searchInput.value.trim().toLowerCase();
+
+  updateLabelOptions();
+  const label = filterLabel.value;
+  const priority = filterPriority.value;
+  filterLabel.classList.toggle('active', label !== 'all');
+  filterPriority.classList.toggle('active', priority !== 'all');
 
   let filtered = tasks;
 
@@ -452,6 +485,14 @@ function applyFilterAndSearch() {
     filtered = filtered.filter(isOverdue);
   } else if (currentFilter === 'completed') {
     filtered = filtered.filter(t => t.completed);
+  }
+
+  if (label !== 'all') {
+    filtered = filtered.filter(t => t.label === label);
+  }
+
+  if (priority !== 'all') {
+    filtered = filtered.filter(t => t.priority === priority);
   }
 
   if (query) {
