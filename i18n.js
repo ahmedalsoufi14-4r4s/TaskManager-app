@@ -27,8 +27,8 @@ const DATE_NAMES = {
       'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
     monthsShort: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو',
       'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
-    days: ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
-    daysShort: ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
+    days: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
+    daysShort: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
     daysNarrow: ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'],
     padDay: false,
     weekStart: 0,
@@ -242,7 +242,7 @@ const STRINGS = {
     'label.other': 'أخرى',
     'label.otherOption': 'أخرى (اكتب تصنيفك)',
 
-    'stats.done': '{done} من {total} منجزة اليوم',
+    'stats.done': 'تم إنجاز {done} من {total} اليوم',
     'stats.none': 'لا مهام مستحقة اليوم',
     'stats.label': 'إنجاز اليوم',
     'sort.by': 'ترتيب حسب',
@@ -291,7 +291,9 @@ const STRINGS = {
     'field.namePlaceholder': 'مثال: إنهاء الواجب',
     'field.deadline': 'الموعد النهائي',
     'field.date': 'التاريخ (يوم/شهر/سنة)',
-    'field.datePlaceholder': 'يوم/شهر/سنة',
+    // An example date: Arabic words would run right to left inside the
+    // left-to-right date field, the opposite order to a typed date
+    'field.datePlaceholder': '{example}',
     'field.calendar': 'اختيار التاريخ من التقويم',
     'field.time': 'الوقت',
     'field.timePlaceholder': '2:30',
@@ -314,7 +316,7 @@ const STRINGS = {
     'deadline.pickDate': 'اختر التاريخ',
     'deadline.pickTime': 'اختر الوقت',
     'deadline.preview': 'الموعد: {weekday} {date} · {relative}',
-    'deadline.clockChange': ' (بسبب تغيير التوقيت، تصبح {typed} هي {real})',
+    'deadline.clockChange': ' (بسبب تغيير التوقيت، سيُحفظ الوقت {real} بدلًا من {typed})',
     'deadline.past': 'هذا الوقت مضى، لذا ستصبح المهمة متأخرة فور حفظها.',
 
     'error.dateFormat': 'اكتب التاريخ بصيغة يوم/شهر/سنة',

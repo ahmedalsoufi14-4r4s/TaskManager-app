@@ -1307,7 +1307,9 @@ function applyLanguage() {
   btnLang.lang = other;
   prefLang.value = currentLang;
 
-  // Modal: times shown as "3:00 PM" or "3:00 م", the preview and any error
+  // Modal: times shown as "3:00 PM" or "3:00 م", the preview and any error.
+  // The date placeholder is "DD/MM/YYYY" in English, an example date in Arabic.
+  inputDate.placeholder = t('field.datePlaceholder', { example: formatDigits('17/10/2026') });
   document.querySelectorAll('[data-quick-time]').forEach(chip => {
     chip.textContent = toTimeText(chip.dataset.quickTime);
   });
