@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,8 +9,8 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" href="icons/icon-192.png" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <!-- Fonts are local (fonts/) so both languages work offline -->
+    <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <!-- Pinned local copy of Lucide so icons work offline -->
     <script src="lib/lucide-1.51.0.min.js"></script>
     <link rel="stylesheet" href="style.css" />
@@ -20,32 +20,33 @@
     <!-- HEADER -->
     <header class="header">
       <div class="header-left">
-        <button class="icon-btn" id="btn-add" title="Add task (N)">
+        <button class="icon-btn" id="btn-add" data-i18n-title="header.add" data-i18n-aria-label="header.add">
           <i data-lucide="plus"></i>
         </button>
-        <button class="icon-btn" id="btn-delete" title="Select tasks to delete" disabled>
+        <button class="icon-btn" id="btn-delete" disabled>
           <i data-lucide="trash-2"></i>
         </button>
-        <button class="icon-btn" id="btn-edit" title="Select one task to edit" disabled>
+        <button class="icon-btn" id="btn-edit" disabled>
           <i data-lucide="pencil"></i>
         </button>
-        <button class="icon-btn" id="btn-reload" title="Reload tasks">
+        <button class="icon-btn" id="btn-reload" data-i18n-title="header.reload" data-i18n-aria-label="header.reload">
           <i data-lucide="rotate-cw"></i>
         </button>
       </div>
 
       <div class="header-center">
-        <h1 class="app-title">Task Manager</h1>
+        <h1 class="app-title" data-i18n="app.title"></h1>
       </div>
 
       <div class="header-right">
-        <button class="icon-btn" id="btn-filter" title="Filter tasks">
+        <button class="lang-btn" id="btn-lang" type="button" data-i18n-title="lang.switch" data-i18n-aria-label="lang.switch"></button>
+        <button class="icon-btn" id="btn-filter" data-i18n-title="header.filter" data-i18n-aria-label="header.filter">
           <i data-lucide="filter"></i>
         </button>
-        <button class="icon-btn" id="btn-search" title="Search tasks">
+        <button class="icon-btn" id="btn-search" data-i18n-title="header.search" data-i18n-aria-label="header.search">
           <i data-lucide="search"></i>
         </button>
-        <button class="icon-btn" id="btn-menu" title="Menu">
+        <button class="icon-btn" id="btn-menu" data-i18n-title="header.menu" data-i18n-aria-label="header.menu">
           <i data-lucide="menu"></i>
         </button>
       </div>
@@ -57,26 +58,26 @@
       <!-- SEARCH BAR -->
       <div class="search-bar" id="search-bar">
         <i data-lucide="search"></i>
-        <input type="text" id="search-input" placeholder="Search tasks..." />
-        <button class="icon-btn" id="btn-close-search">
+        <input type="text" id="search-input" dir="auto" data-i18n-placeholder="search.placeholder" data-i18n-aria-label="header.search" />
+        <button class="icon-btn" id="btn-close-search" data-i18n-title="search.close" data-i18n-aria-label="search.close">
           <i data-lucide="x"></i>
         </button>
       </div>
 
       <!-- FILTER BAR -->
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="active">Active</button>
-        <button class="filter-btn" data-filter="overdue">Overdue</button>
-        <button class="filter-btn" data-filter="completed">Completed</button>
-        <select class="toolbar-select" id="filter-label" aria-label="Filter by label">
-          <option value="all">All labels</option>
+        <button class="filter-btn active" data-filter="all" data-i18n="filter.all"></button>
+        <button class="filter-btn" data-filter="active" data-i18n="filter.active"></button>
+        <button class="filter-btn" data-filter="overdue" data-i18n="filter.overdue"></button>
+        <button class="filter-btn" data-filter="completed" data-i18n="filter.completed"></button>
+        <select class="toolbar-select" id="filter-label" data-i18n-aria-label="filter.byLabel">
+          <option value="all" data-i18n="filter.allLabels"></option>
         </select>
-        <select class="toolbar-select" id="filter-priority" aria-label="Filter by priority">
-          <option value="all">All priorities</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
+        <select class="toolbar-select" id="filter-priority" data-i18n-aria-label="filter.byPriority">
+          <option value="all" data-i18n="filter.allPriorities"></option>
+          <option value="high" data-i18n="priority.high"></option>
+          <option value="medium" data-i18n="priority.medium"></option>
+          <option value="low" data-i18n="priority.low"></option>
         </select>
       </div>
 
@@ -84,15 +85,15 @@
       <div class="list-toolbar">
         <div class="stats">
           <span class="stats-text" id="stats-text"></span>
-          <div class="progress" id="progress" role="progressbar" aria-label="Done today" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress" id="progress" role="progressbar" data-i18n-aria-label="stats.label" aria-valuemin="0" aria-valuemax="100">
             <div class="progress-bar" id="progress-bar"></div>
           </div>
         </div>
         <label class="sort-control">
-          Sort by
+          <span data-i18n="sort.by"></span>
           <select class="toolbar-select" id="sort-select">
-            <option value="deadline">Deadline</option>
-            <option value="priority">Priority</option>
+            <option value="deadline" data-i18n="sort.deadline"></option>
+            <option value="priority" data-i18n="sort.priority"></option>
           </select>
         </label>
       </div>
@@ -102,7 +103,7 @@
 
       <!-- EMPTY STATE -->
       <div class="empty-state" id="empty-state">
-        <p>No tasks yet, click on the + to add one</p>
+        <p></p>
       </div>
 
     </main>
@@ -112,8 +113,8 @@
       <div class="modal">
 
         <div class="modal-header">
-          <h2 class="modal-title" id="modal-title">Add Task</h2>
-          <button class="icon-btn" id="btn-close-modal">
+          <h2 class="modal-title" id="modal-title"></h2>
+          <button class="icon-btn" id="btn-close-modal" data-i18n-title="modal.close" data-i18n-aria-label="modal.close">
             <i data-lucide="x"></i>
           </button>
         </div>
@@ -121,117 +122,107 @@
         <div class="modal-body">
 
           <div class="form-group">
-            <label for="input-name">Task name</label>
-            <input type="text" id="input-name" placeholder="e.g. Finish assignment" />
+            <label for="input-name" data-i18n="field.name"></label>
+            <input type="text" id="input-name" dir="auto" data-i18n-placeholder="field.namePlaceholder" />
           </div>
 
           <!-- DEADLINE: DD/MM/YYYY date with calendar, 12-hour time with AM/PM, quick picks -->
           <fieldset class="form-group deadline">
-            <legend>Deadline</legend>
+            <legend data-i18n="field.deadline"></legend>
 
             <div class="deadline-fields">
               <div class="deadline-field">
-                <label for="input-date">Date (DD/MM/YYYY)</label>
+                <label for="input-date" data-i18n="field.date"></label>
                 <div class="input-row" id="date-wrap">
-                  <input type="text" id="input-date" inputmode="numeric" autocomplete="off"
-                    placeholder="DD/MM/YYYY" maxlength="10"
+                  <input type="text" class="ltr-input" id="input-date" dir="ltr" inputmode="numeric" autocomplete="off"
+                    maxlength="10" data-i18n-placeholder="field.datePlaceholder"
                     aria-describedby="deadline-summary deadline-warning deadline-error" />
                   <button type="button" class="input-side-btn" id="btn-calendar"
-                    aria-label="Choose date from calendar" aria-haspopup="dialog"
+                    data-i18n-aria-label="field.calendar" aria-haspopup="dialog"
                     aria-expanded="false" aria-controls="calendar">
                     <i data-lucide="calendar"></i>
                   </button>
 
-                  <div class="calendar" id="calendar" role="dialog" aria-label="Choose date" hidden>
+                  <div class="calendar" id="calendar" role="dialog" data-i18n-aria-label="calendar.label" hidden>
                     <div class="calendar-header">
-                      <button type="button" class="calendar-nav" id="cal-prev" aria-label="Previous month">
+                      <button type="button" class="calendar-nav" id="cal-prev" data-i18n-aria-label="calendar.prev">
                         <i data-lucide="chevron-left"></i>
                       </button>
                       <span class="calendar-title" id="cal-title" aria-live="polite"></span>
-                      <button type="button" class="calendar-nav" id="cal-next" aria-label="Next month">
+                      <button type="button" class="calendar-nav" id="cal-next" data-i18n-aria-label="calendar.next">
                         <i data-lucide="chevron-right"></i>
                       </button>
                     </div>
                     <table class="calendar-grid" role="grid" aria-labelledby="cal-title">
                       <thead>
-                        <tr>
-                          <th scope="col" abbr="Monday">Mo</th>
-                          <th scope="col" abbr="Tuesday">Tu</th>
-                          <th scope="col" abbr="Wednesday">We</th>
-                          <th scope="col" abbr="Thursday">Th</th>
-                          <th scope="col" abbr="Friday">Fr</th>
-                          <th scope="col" abbr="Saturday">Sa</th>
-                          <th scope="col" abbr="Sunday">Su</th>
-                        </tr>
+                        <tr id="cal-head"></tr>
                       </thead>
                       <tbody id="cal-body"></tbody>
                     </table>
                   </div>
                 </div>
-                <div class="quick-picks" role="group" aria-label="Quick dates">
-                  <button type="button" class="chip" data-quick-date="today">Today</button>
-                  <button type="button" class="chip" data-quick-date="tomorrow">Tomorrow</button>
-                  <button type="button" class="chip" data-quick-date="next-week">Next week</button>
+                <div class="quick-picks" role="group" data-i18n-aria-label="quick.dates">
+                  <button type="button" class="chip" data-quick-date="today" data-i18n="quick.today"></button>
+                  <button type="button" class="chip" data-quick-date="tomorrow" data-i18n="quick.tomorrow"></button>
+                  <button type="button" class="chip" data-quick-date="next-week" data-i18n="quick.nextWeek"></button>
                 </div>
               </div>
 
               <div class="deadline-field">
-                <label for="input-time">Time</label>
+                <label for="input-time" data-i18n="field.time"></label>
                 <div class="input-row">
-                  <input type="text" id="input-time" inputmode="decimal" autocomplete="off"
-                    placeholder="e.g. 2:30" maxlength="12"
+                  <input type="text" class="ltr-input" id="input-time" dir="ltr" inputmode="decimal" autocomplete="off"
+                    maxlength="12" data-i18n-placeholder="field.timePlaceholder"
                     aria-describedby="deadline-summary deadline-warning deadline-error" />
-                  <div class="ampm" role="group" aria-label="AM or PM">
-                    <button type="button" class="ampm-btn" data-period="AM" aria-pressed="true">AM</button>
-                    <button type="button" class="ampm-btn" data-period="PM" aria-pressed="false">PM</button>
+                  <div class="ampm" role="group" data-i18n-aria-label="field.ampm">
+                    <button type="button" class="ampm-btn" data-period="AM" aria-pressed="true" data-i18n="time.am"></button>
+                    <button type="button" class="ampm-btn" data-period="PM" aria-pressed="false" data-i18n="time.pm"></button>
                   </div>
                 </div>
-                <div class="quick-picks quick-times" role="group" aria-label="Quick times">
-                  <button type="button" class="chip" data-quick-time="09:00">9:00 AM</button>
-                  <button type="button" class="chip" data-quick-time="12:00">12:00 PM</button>
-                  <button type="button" class="chip" data-quick-time="17:00">5:00 PM</button>
-                  <button type="button" class="chip" data-quick-time="23:59">11:59 PM</button>
+                <div class="quick-picks quick-times" role="group" data-i18n-aria-label="quick.times">
+                  <button type="button" class="chip" data-quick-time="09:00"></button>
+                  <button type="button" class="chip" data-quick-time="12:00"></button>
+                  <button type="button" class="chip" data-quick-time="17:00"></button>
+                  <button type="button" class="chip" data-quick-time="23:59"></button>
                 </div>
               </div>
             </div>
 
             <p class="deadline-summary" id="deadline-summary" aria-live="polite"></p>
-            <p class="deadline-note deadline-warning" id="deadline-warning" hidden>
-              This time has passed, so the task will be overdue right away.
-            </p>
+            <p class="deadline-note deadline-warning" id="deadline-warning" data-i18n="deadline.past" hidden></p>
             <p class="deadline-note deadline-error" id="deadline-error" role="alert" hidden></p>
           </fieldset>
 
           <div class="form-group">
-            <label for="input-label">Label</label>
+            <label for="input-label" data-i18n="field.label"></label>
             <select id="input-label">
-              <option value="university">University</option>
-              <option value="work">Work</option>
-              <option value="personal">Personal</option>
-              <option value="health">Health</option>
-              <option value="other">Other (type your own)</option>
+              <option value="university" data-i18n="label.university"></option>
+              <option value="work" data-i18n="label.work"></option>
+              <option value="personal" data-i18n="label.personal"></option>
+              <option value="health" data-i18n="label.health"></option>
+              <option value="other" data-i18n="label.otherOption"></option>
             </select>
           </div>
 
           <div class="form-group" id="custom-label-group">
-            <label for="input-custom-label">Custom label</label>
-            <input type="text" id="input-custom-label" placeholder="Type your label" />
+            <label for="input-custom-label" data-i18n="field.customLabel"></label>
+            <input type="text" id="input-custom-label" dir="auto" data-i18n-placeholder="field.customLabelPlaceholder" />
           </div>
 
           <div class="form-group">
-            <label for="input-priority">Priority</label>
+            <label for="input-priority" data-i18n="field.priority"></label>
             <select id="input-priority">
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low" data-i18n="priority.low"></option>
+              <option value="medium" data-i18n="priority.medium"></option>
+              <option value="high" data-i18n="priority.high"></option>
             </select>
           </div>
 
         </div>
 
         <div class="modal-footer">
-          <button class="btn-secondary" id="btn-cancel">Cancel</button>
-          <button class="btn-primary" id="btn-save">Save task</button>
+          <button class="btn-secondary" id="btn-cancel" data-i18n="modal.cancel"></button>
+          <button class="btn-primary" id="btn-save" data-i18n="modal.save"></button>
         </div>
 
       </div>
@@ -242,68 +233,68 @@
       <div class="aside" id="aside-panel">
 
         <div class="aside-header">
-          <h2 class="aside-title">Menu</h2>
-          <button class="icon-btn" id="btn-close-aside">
+          <h2 class="aside-title" data-i18n="menu.title"></h2>
+          <button class="icon-btn" id="btn-close-aside" data-i18n-title="menu.close" data-i18n-aria-label="menu.close">
             <i data-lucide="x"></i>
           </button>
         </div>
 
         <!-- PREFERENCES -->
         <section class="aside-section">
-          <h3 class="aside-section-title">Preferences</h3>
+          <h3 class="aside-section-title" data-i18n="menu.preferences"></h3>
 
           <div class="pref-row">
-            <label class="pref-label">Theme</label>
-            <select id="pref-theme">
-              <option value="system">System default</option>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
+            <label class="pref-label" for="pref-lang" data-i18n="menu.language"></label>
+            <select id="pref-lang">
+              <option value="en" lang="en"></option>
+              <option value="ar" lang="ar"></option>
             </select>
           </div>
 
           <div class="pref-row">
-            <label class="pref-label">Notifications</label>
+            <label class="pref-label" for="pref-theme" data-i18n="menu.theme"></label>
+            <select id="pref-theme">
+              <option value="system" data-i18n="theme.system"></option>
+              <option value="dark" data-i18n="theme.dark"></option>
+              <option value="light" data-i18n="theme.light"></option>
+            </select>
+          </div>
+
+          <div class="pref-row">
+            <label class="pref-label" for="pref-notifications" data-i18n="menu.notifications"></label>
             <label class="toggle">
               <input type="checkbox" id="pref-notifications" />
               <span class="toggle-slider"></span>
             </label>
           </div>
 
-          <button class="btn-secondary full-width" id="btn-notif-settings">
-            Notification settings
-          </button>
+          <button class="btn-secondary full-width" id="btn-notif-settings" data-i18n="menu.notificationSettings"></button>
         </section>
 
         <!-- EXPORT -->
         <section class="aside-section">
-          <h3 class="aside-section-title">Export & Backup</h3>
-          <button class="btn-secondary full-width" id="btn-export">
-            Export report (.txt)
-          </button>
-          <button class="btn-secondary full-width" id="btn-backup">
-            Backup tasks (.json)
-          </button>
-          <button class="btn-primary full-width" id="btn-restore">
-            Restore from backup
-          </button>
+          <h3 class="aside-section-title" data-i18n="menu.exportBackup"></h3>
+          <button class="btn-secondary full-width" id="btn-export" data-i18n="menu.exportReport"></button>
+          <button class="btn-secondary full-width" id="btn-backup" data-i18n="menu.backup"></button>
+          <button class="btn-primary full-width" id="btn-restore" data-i18n="menu.restore"></button>
           <input type="file" id="restore-file-input" accept=".json" style="display:none" />
         </section>
 
         <!-- SHORTCUTS -->
         <section class="aside-section">
-          <h3 class="aside-section-title">Shortcuts</h3>
+          <h3 class="aside-section-title" data-i18n="menu.shortcuts"></h3>
           <dl class="shortcuts">
             <div class="shortcut-row">
               <dt><kbd>N</kbd></dt>
-              <dd>New task</dd>
+              <dd data-i18n="shortcut.new"></dd>
             </div>
             <div class="shortcut-row">
               <dt><kbd>Enter</kbd></dt>
-              <dd>Save task</dd>
+              <dd data-i18n="shortcut.save"></dd>
             </div>
             <div class="shortcut-row">
               <dt><kbd>Esc</kbd></dt>
-              <dd>Close window, menu or search</dd>
+              <dd data-i18n="shortcut.close"></dd>
             </div>
           </dl>
         </section>
@@ -317,6 +308,7 @@
       <button class="toast-action" id="toast-action"></button>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

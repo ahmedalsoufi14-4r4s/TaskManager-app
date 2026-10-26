@@ -34,13 +34,8 @@ const emptyStateEl = document.getElementById('empty-state');
 let selectedIds = new Set();
 let currentSort = localStorage.getItem('sort') || 'deadline';
 
-// Order the groups appear in the list
-const GROUPS = [
-  { key: 'overdue',   title: 'Overdue' },
-  { key: 'today',     title: 'Today' },
-  { key: 'upcoming',  title: 'Upcoming' },
-  { key: 'completed', title: 'Completed' },
-];
+// Order the groups appear in the list (titles come from i18n.js)
+const GROUPS = ['overdue', 'today', 'upcoming', 'completed'];
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 
@@ -54,8 +49,8 @@ function isOverdue(task) {
 }
 
 function getStatus(task) {
-  if (task.completed) return 'Completed';
-  return isOverdue(task) ? 'Overdue' : 'Active';
+  if (task.completed) return t('status.completed');
+  return t(isOverdue(task) ? 'status.overdue' : 'status.active');
 }
 
 function isDueToday(task) {
@@ -96,9 +91,7 @@ function renderTasks(filtered = tasks) {
   taskListEl.innerHTML = '';
 
   if (filtered.length === 0) {
-    emptyStateEl.querySelector('p').textContent = tasks.length
-      ? 'No tasks match your filters'
-      : 'No tasks yet, click on the + to add one';
+    emptyStateEl.querySelector('p').textContent = t(tasks.length ? 'empty.filtered' : 'empty.none');
     emptyStateEl.style.display = 'block';
     return;
   }
@@ -108,13 +101,13 @@ function renderTasks(filtered = tasks) {
   // One header per group, only for groups that have tasks
   GROUPS.forEach(group => {
     const groupTasks = filtered
-      .filter(t => getGroup(t) === group.key)
+      .filter(task => getGroup(task) === group)
       .sort(compareTasks);
     if (groupTasks.length === 0) return;
 
     const header = document.createElement('h2');
-    header.className = `group-header group-${group.key}`;
-    header.innerHTML = `${group.title} <span class="group-count">${groupTasks.length}</span>`;
+    header.className = `group-header group-${group}`;
+    header.innerHTML = `${t(`group.${group}`)} <span class="group-count">${formatDigits(groupTasks.length)}</span>`;
     taskListEl.appendChild(header);
 
     groupTasks.forEach(task => taskListEl.appendChild(renderTaskRow(task)));
@@ -134,53 +127,66 @@ function renderTaskRow(task) {
     + (selectedIds.has(task.id) ? ' selected' : '');
   row.dataset.id = task.id;
 
+  // dir="auto" lets an English or Arabic name read in its own direction
+  const priorityTitle = PRIORITY_RANK[task.priority] === undefined ? '' : t(`priorityDot.${task.priority}`);
   row.innerHTML = `
     <div class="task-info">
-      <span class="task-name">${escapeHTML(task.name)}</span>
+      <span class="task-name" dir="auto">${escapeHTML(task.name)}</span>
       <span class="task-date" title="${formatFullDate(task.datetime)}">${formatDate(task.datetime)}</span>
       <span class="task-relative${overdue ? ' task-overdue' : ''}" title="${formatFullDate(task.datetime)}">${formatRelative(task)}</span>
-      <span class="task-label" style="background-color: ${getLabelColor(task.label)}">
-        ${escapeHTML(task.label)}
+      <span class="task-label" dir="auto" style="background-color: ${getLabelColor(task.label)}">
+        ${escapeHTML(labelName(task.label))}
       </span>
-      <span class="task-priority priority-${task.priority}"></span>
+      <span class="task-priority priority-${task.priority}" title="${priorityTitle}" aria-label="${priorityTitle}"></span>
     </div>
-    <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} ${locked ? 'disabled title="Deadline passed — locked"' : ''} />
+    <input type="checkbox" class="task-checkbox" aria-label="${escapeHTML(t('task.markDone', { name: task.name }))}"
+      ${task.completed ? 'checked' : ''} ${locked ? `disabled title="${t('task.locked')}"` : ''} />
   `;
 
   return row;
 }
 
-// Dates and times are built by hand so they look the same whatever the
-// browser's language or region: "17 Oct 2026, 3:00 PM"
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-  'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Dates and times are built from the names in i18n.js, so they look the
+// same whatever the browser's region: "17 Oct 2026, 3:00 PM" or
+// "17 أكتوبر 2026، 3:00 م"
 
 const pad = n => String(n).padStart(2, '0');
 
 // 12-hour clock: 0:05 is "12:05 AM", 12:00 is "12:00 PM"
 function formatClock(hours, minutes) {
-  return `${hours % 12 || 12}:${pad(minutes)} ${hours < 12 ? 'AM' : 'PM'}`;
+  return t('time.clock', {
+    hours: hours % 12 || 12,
+    minutes: formatDigits(pad(minutes)),
+    period: t(hours < 12 ? 'time.am' : 'time.pm'),
+  });
 }
 
 // "Saturday, 17 October 2026"
 function formatLongDate(d) {
-  return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  const names = dateNames();
+  return t('date.long', {
+    weekday: names.days[d.getDay()], day: d.getDate(),
+    month: names.months[d.getMonth()], year: d.getFullYear(),
+  });
 }
 
 function formatDate(datetime) {
   if (!datetime) return '';
   const d = new Date(datetime);
   if (Number.isNaN(d.getTime())) return '';
-  return `${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}, `
-    + formatClock(d.getHours(), d.getMinutes());
+  const names = dateNames();
+  return t('date.short', {
+    day: names.padDay ? formatDigits(pad(d.getDate())) : d.getDate(),
+    month: names.monthsShort[d.getMonth()], year: d.getFullYear(),
+    time: formatClock(d.getHours(), d.getMinutes()),
+  });
 }
 
 // Exact timestamp for the tooltip
 function formatFullDate(datetime) {
   if (!datetime || Number.isNaN(new Date(datetime).getTime())) return '';
   const d = new Date(datetime);
-  return `${formatLongDate(d)} at ${formatClock(d.getHours(), d.getMinutes())}`;
+  return t('date.full', { date: formatLongDate(d), time: formatClock(d.getHours(), d.getMinutes()) });
 }
 
 // Short label like "in 2 h", "in 3 days" or "overdue by 1 day"
@@ -195,13 +201,13 @@ function formatRelative(task) {
   const days = Math.round(hours / 24);
 
   let amount;
-  if (minutes < 1) amount = '<1 min';
-  else if (minutes < 60) amount = `${minutes} min`;
-  else if (hours < 24) amount = `${hours} h`;
-  else amount = `${days} ${days === 1 ? 'day' : 'days'}`;
+  if (minutes < 1) amount = t('rel.lessThanMinute');
+  else if (minutes < 60) amount = t('unit.minute', { count: minutes });
+  else if (hours < 24) amount = t('unit.hour', { count: hours });
+  else amount = t('unit.day', { count: days });
 
-  if (diff > 0) return `in ${amount}`;
-  return isOverdue(task) ? `overdue by ${amount}` : `${amount} ago`;
+  if (diff > 0) return t('rel.in', { amount });
+  return t(isOverdue(task) ? 'rel.overdue' : 'rel.ago', { amount });
 }
 
 // Updates the relative labels in place, so selection and hover stay put
@@ -210,6 +216,14 @@ function refreshRelativeTimes() {
     const task = tasks.find(t => t.id === row.dataset.id);
     if (task) row.querySelector('.task-relative').textContent = formatRelative(task);
   });
+}
+
+// Built-in labels are stored as English ids and shown translated; custom
+// labels are shown exactly as typed
+const BUILT_IN_LABELS = ['university', 'work', 'personal', 'health', 'other'];
+
+function labelName(label) {
+  return BUILT_IN_LABELS.includes(label) ? t(`label.${label}`) : label;
 }
 
 // Dark enough for white pill text (at least 5:1)
@@ -260,6 +274,7 @@ const inputDateWrap = document.getElementById('date-wrap');
 const btnCalendar   = document.getElementById('btn-calendar');
 const calendar      = document.getElementById('calendar');
 const calTitle      = document.getElementById('cal-title');
+const calHead       = document.getElementById('cal-head');
 const calBody       = document.getElementById('cal-body');
 const ampmButtons   = document.querySelectorAll('[data-period]');
 
@@ -267,6 +282,8 @@ const ampmButtons   = document.querySelectorAll('[data-period]');
 let timePeriod = 'AM';
 // Day the calendar is showing and has keyboard focus on, "YYYY-MM-DD"
 let calFocus = '';
+// Builds the visible deadline error in the current language, or null
+let deadlineErrorText = null;
 
 function toDateValue(d) {
   return `${String(d.getFullYear()).padStart(4, '0')}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -279,7 +296,7 @@ function toDatetimeValue(d) {
 // "YYYY-MM-DD" to "DD/MM/YYYY"
 function toDateText(value) {
   const [year, month, day] = value.split('-');
-  return `${day}/${month}/${year}`;
+  return formatDigits(`${day}/${month}/${year}`);
 }
 
 // "HH:MM" (24-hour) to "3:00 PM"
@@ -288,31 +305,47 @@ function toTimeText(value) {
   return formatClock(hours, minutes);
 }
 
-// Reads DD/MM/YYYY, also 1/2/2026, 1-2-2026, 1.2.2026 or 01022026.
-// Returns { date: "YYYY-MM-DD" }, { error } or null when empty.
+// Text for the time field, which stays left to right. In Arabic it holds
+// only "3:00": a ص/م typed after it would land on the wrong side for a
+// right-to-left reader, and the ص/م buttons beside it already show it.
+function toTimeFieldText(value) {
+  if (currentLang !== 'ar') return toTimeText(value);
+  const [hours, minutes] = value.split(':').map(Number);
+  return formatDigits(`${hours % 12 || 12}:${pad(minutes)}`);
+}
+
+// Reads DD/MM/YYYY, also 1/2/2026, 1-2-2026, 1.2.2026, 01022026 and
+// Arabic-Indic digits. Returns { date: "YYYY-MM-DD" }, { error } (a
+// function that gives the message in the current language) or null.
 function parseDateText(text) {
-  const t = text.trim();
-  if (!t) return null;
-  const m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/) || t.match(/^(\d{2})(\d{2})(\d{4})$/);
-  if (!m) return { error: 'Enter the date as DD/MM/YYYY' };
+  const value = normalizeDigits(text).trim();
+  if (!value) return null;
+  const m = value.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/) || value.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (!m) return { error: () => t('error.dateFormat') };
   const [day, month, year] = m.slice(1, 4).map(Number);
-  if (year < 1900) return { error: 'Year must be 1900 or later' };
-  if (month < 1 || month > 12) return { error: 'Month must be between 01 and 12' };
+  if (year < 1900) return { error: () => t('error.year', { min: 1900 }) };
+  if (month < 1 || month > 12) {
+    return { error: () => t('error.month', { from: formatDigits('01'), to: 12 }) };
+  }
   const days = new Date(year, month, 0).getDate();
   if (day < 1 || day > days) {
-    return { error: `Day must be between 01 and ${days} for ${MONTHS[month - 1]} ${year}` };
+    return { error: () => t('error.day', {
+      from: formatDigits('01'), to: days, month: dateNames().months[month - 1], year,
+    }) };
   }
   return { date: `${year}-${pad(month)}-${pad(day)}` };
 }
 
-// Reads 2:30pm, 2:30 PM, 230pm, 2.30 pm, 9am and 14:30. Without AM/PM an
-// hour from 1 to 12 uses the selected AM/PM button, while 0 and 13 to 23
-// are read as 24-hour. Returns { time: "HH:MM" (24-hour), period } or null.
+// Reads 2:30pm, 2:30 PM, 230pm, 2.30 pm, 9am, 14:30, Arabic-Indic digits
+// and ص/م for AM/PM. Without AM/PM an hour from 1 to 12 uses the selected
+// AM/PM button, while 0 and 13 to 23 are read as 24-hour.
+// Returns { time: "HH:MM" (24-hour), period } or null.
 function parseTime(text, period = timePeriod) {
-  const t = text.toLowerCase().replace(/\s+/g, '')
+  const value = normalizeDigits(text).toLowerCase().replace(/\s+/g, '')
+    .replace(/(صباحًا|صباحاً|صباحا|ص)$/, 'am').replace(/(مساءً|مساءا|مساء|م)$/, 'pm')
     .replace(/a\.?m?\.?$/, 'am').replace(/p\.?m?\.?$/, 'pm')
-    .replace(/[.,]/, ':');
-  const m = t.match(/^(\d{1,2})(?::(\d{2})|(\d{2}))?(am|pm)?$/);
+    .replace(/[.,٫،]/, ':');
+  const m = value.match(/^(\d{1,2})(?::(\d{2})|(\d{2}))?(am|pm)?$/);
   if (!m) return null;
   const hours = Number(m[1]);
   const minutes = Number(m[2] ?? m[3] ?? 0);
@@ -349,7 +382,7 @@ function defaultDeadline() {
 function setDeadline(datetime) {
   const valid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(datetime || '');
   inputDate.value = valid ? toDateText(datetime.slice(0, 10)) : '';
-  inputTime.value = valid ? toTimeText(datetime.slice(11, 16)) : '';
+  inputTime.value = valid ? toTimeFieldText(datetime.slice(11, 16)) : '';
   if (valid) timePeriod = Number(datetime.slice(11, 13)) < 12 ? 'AM' : 'PM';
   updateDeadlineSummary();
 }
@@ -372,28 +405,37 @@ function updateDeadlineSummary() {
   });
 
   if (!date || !time) {
-    deadlineSummary.textContent = !date && !time ? 'Pick a date and a time'
-      : !date ? 'Pick a date' : 'Pick a time';
+    deadlineSummary.textContent = t(!date && !time ? 'deadline.pickBoth'
+      : !date ? 'deadline.pickDate' : 'deadline.pickTime');
     deadlineWarning.hidden = true;
     return;
   }
 
   const task = { datetime: `${date}T${time}`, completed: editingCompleted };
   const due = new Date(task.datetime);
-  let text = `Due ${DAYS[due.getDay()].slice(0, 3)} ${formatDate(task.datetime)} · ${formatRelative(task)}`;
+  let text = t('deadline.preview', {
+    weekday: dateNames().daysShort[due.getDay()],
+    date: formatDate(task.datetime),
+    relative: formatRelative(task),
+  });
   // A time skipped by a clock change (e.g. 2:30 AM) moves to the real one
   const realTime = `${pad(due.getHours())}:${pad(due.getMinutes())}`;
-  if (realTime !== time) text += ` (clocks change, so ${toTimeText(time)} becomes ${toTimeText(realTime)})`;
+  if (realTime !== time) {
+    text += t('deadline.clockChange', { typed: toTimeText(time), real: toTimeText(realTime) });
+  }
   deadlineSummary.textContent = text;
   deadlineWarning.hidden = !isOverdue(task);
 }
 
-function showFieldError(field, message = '', moveFocus = true) {
+// errorText is a function that returns the message in the current
+// language, so a visible error follows a language switch
+function showFieldError(field, errorText = null, moveFocus = true) {
   field.style.borderColor = '#EF4444';
   field.setAttribute('aria-invalid', 'true');
   // A deadline error takes the place of the preview line
-  if (message) {
-    deadlineError.textContent = message;
+  if (errorText) {
+    deadlineErrorText = errorText;
+    deadlineError.textContent = errorText();
     deadlineError.hidden = false;
     deadlineSummary.hidden = true;
   }
@@ -408,6 +450,7 @@ function clearFieldError(field) {
 function clearDeadlineErrors() {
   clearFieldError(inputDate);
   clearFieldError(inputTime);
+  deadlineErrorText = null;
   deadlineError.hidden = true;
   deadlineSummary.hidden = false;
 }
@@ -423,7 +466,7 @@ document.querySelectorAll('[data-quick-date]').forEach(chip => {
 // A quick time with no date yet means today
 document.querySelectorAll('[data-quick-time]').forEach(chip => {
   chip.addEventListener('click', () => {
-    inputTime.value = toTimeText(chip.dataset.quickTime);
+    inputTime.value = toTimeFieldText(chip.dataset.quickTime);
     timePeriod = Number(chip.dataset.quickTime.slice(0, 2)) < 12 ? 'AM' : 'PM';
     if (!parseDateText(inputDate.value)?.date) inputDate.value = toDateText(quickDate('today'));
     clearDeadlineErrors();
@@ -438,21 +481,31 @@ ampmButtons.forEach(btn => {
     const result = parseTime(inputTime.value);
     if (result) {
       const hours = Number(result.time.slice(0, 2)) % 12 + (timePeriod === 'PM' ? 12 : 0);
-      inputTime.value = formatClock(hours, Number(result.time.slice(3)));
+      inputTime.value = toTimeFieldText(`${pad(hours)}:${result.time.slice(3)}`);
     }
     clearDeadlineErrors();
     updateDeadlineSummary();
   });
 });
 
+// Arabic-Indic digits typed into the date or time field become 0-9 as
+// they are typed (formatDigits shapes them again when tidied)
+function normalizeFieldDigits(field) {
+  const normal = normalizeDigits(field.value);
+  if (normal !== field.value) field.value = normal;
+}
+
 // Adds the slashes while typing a date at the end of the field
 inputDate.addEventListener('input', (e) => {
+  normalizeFieldDigits(inputDate);
   const v = inputDate.value;
   if (e.inputType === 'insertText' && inputDate.selectionStart === v.length) {
     if (/^\d{2}$/.test(v) || /^\d{1,2}\/\d{2}$/.test(v)) inputDate.value = v + '/';
     else if (v.endsWith('//')) inputDate.value = v.slice(0, -1);
   }
 });
+
+inputTime.addEventListener('input', () => normalizeFieldDigits(inputTime));
 
 [inputDate, inputTime].forEach(field => {
   field.addEventListener('input', () => {
@@ -479,24 +532,35 @@ inputDate.addEventListener('blur', (e) => {
 inputTime.addEventListener('blur', () => {
   const result = parseTime(inputTime.value);
   if (result) {
-    inputTime.value = toTimeText(result.time);
+    inputTime.value = toTimeFieldText(result.time);
     timePeriod = result.period;
     updateDeadlineSummary();
   }
 });
 
 // ── Calendar ──
-// A small month view that starts the week on Monday. Arrow keys move by
-// day or week, Page Up/Down by month, Home/End to the week's ends.
+// A small month view. The week starts on Monday in English and Sunday in
+// Arabic. Arrow keys move by day or week (mirrored in right-to-left),
+// Page Up/Down by month, Home/End to the week's ends.
+
+// Position of a weekday (0 = Sunday) within the displayed week
+function weekPosition(weekday) {
+  return (weekday - dateNames().weekStart + 7) % 7;
+}
 
 function renderCalendar() {
   const [year, month] = calFocus.split('-').map(Number);
-  const offset = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+  const offset = weekPosition(new Date(year, month - 1, 1).getDay());
   const days = new Date(year, month, 0).getDate();
   const selected = parseDateText(inputDate.value)?.date;
   const today = quickDate('today');
+  const names = dateNames();
 
-  calTitle.textContent = `${MONTHS[month - 1]} ${year}`;
+  calTitle.textContent = t('date.monthYear', { month: names.months[month - 1], year });
+  calHead.innerHTML = [0, 1, 2, 3, 4, 5, 6].map(i => {
+    const weekday = (i + names.weekStart) % 7;
+    return `<th scope="col" abbr="${names.days[weekday]}">${names.daysNarrow[weekday]}</th>`;
+  }).join('');
   let html = '';
   for (let day = 1 - offset; day <= days; day += 7) {
     html += '<tr>';
@@ -509,7 +573,7 @@ function renderCalendar() {
       html += `<td><button type="button" class="cal-day" data-date="${value}"`
         + ` tabindex="${value === calFocus ? 0 : -1}" aria-pressed="${value === selected}"`
         + `${value === today ? ' aria-current="date"' : ''}`
-        + ` aria-label="${formatLongDate(new Date(year, month - 1, i))}">${i}</button></td>`;
+        + ` aria-label="${formatLongDate(new Date(year, month - 1, i))}">${formatDigits(i)}</button></td>`;
     }
     html += '</tr>';
   }
@@ -564,8 +628,9 @@ calBody.addEventListener('click', (e) => {
 });
 
 calBody.addEventListener('keydown', (e) => {
-  const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
-  const weekday = (new Date(`${calFocus}T00:00`).getDay() + 6) % 7;
+  const step = document.documentElement.dir === 'rtl' ? -1 : 1;
+  const moves = { ArrowLeft: -step, ArrowRight: step, ArrowUp: -7, ArrowDown: 7 };
+  const weekday = weekPosition(new Date(`${calFocus}T00:00`).getDay());
   if (e.key in moves) shiftCalendar(moves[e.key]);
   else if (e.key === 'PageUp') shiftCalendar(0, -1);
   else if (e.key === 'PageDown') shiftCalendar(0, 1);
@@ -591,11 +656,18 @@ document.addEventListener('focusin', (e) => {
 
 inputName.addEventListener('input', () => clearFieldError(inputName));
 
+// Tooltips with the real dates behind the quick date buttons
+function updateQuickDateTitles() {
+  document.querySelectorAll('[data-quick-date]').forEach(chip => {
+    chip.title = formatLongDate(new Date(`${quickDate(chip.dataset.quickDate)}T00:00`));
+  });
+}
+
 function openModal(task = null) {
   modalOpener = document.activeElement;
   editingId = task ? task.id : null;
   editingCompleted = task ? task.completed : false;
-  modalTitle.textContent = task ? 'Edit Task' : 'Add Task';
+  modalTitle.textContent = t(task ? 'modal.edit' : 'modal.add');
 
   // Cancel and reopen always starts clean
   clearFieldError(inputName);
@@ -605,10 +677,7 @@ function openModal(task = null) {
   inputPriority.value  = task ? task.priority : 'low';
   setDeadline(task ? task.datetime : defaultDeadline());
 
-  // Tooltips with the real dates behind the quick date buttons
-  document.querySelectorAll('[data-quick-date]').forEach(chip => {
-    chip.title = formatLongDate(new Date(`${quickDate(chip.dataset.quickDate)}T00:00`));
-  });
+  updateQuickDateTitles();
   closeCalendar(false);
 
   const knownLabels = ['university', 'work', 'personal', 'health'];
@@ -646,17 +715,27 @@ const toastAction  = document.getElementById('toast-action');
 
 let toastTimer = null;
 let toastCallback = null;
+let toastText = null;
+let toastActionKey = null;
 
 // Short message at the bottom of the screen, with an optional action
-// button (used for Undo). Hides itself after 6 seconds.
-function showToast(message, actionLabel = null, onAction = null) {
-  toastMessage.textContent = message;
-  toastAction.textContent = actionLabel || '';
-  toastAction.style.display = actionLabel ? '' : 'none';
+// button (used for Undo). Hides itself after 6 seconds. getText returns
+// the message in the current language, so it follows a language switch.
+function showToast(getText, actionKey = null, onAction = null) {
+  toastText = getText;
+  toastActionKey = actionKey;
+  renderToast();
+  toastAction.style.display = actionKey ? '' : 'none';
   toastCallback = onAction;
   toastEl.classList.add('active');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(hideToast, 6000);
+}
+
+function renderToast() {
+  if (!toastText) return;
+  toastMessage.textContent = toastText();
+  toastAction.textContent = toastActionKey ? t(toastActionKey) : '';
 }
 
 function hideToast() {
@@ -694,17 +773,19 @@ document.getElementById('btn-save').addEventListener('click', () => {
   clearFieldError(inputName);
 
   if (!dateResult || dateResult.error) {
-    showFieldError(inputDate, dateResult ? dateResult.error : 'Pick a date');
+    showFieldError(inputDate, dateResult ? dateResult.error : () => t('deadline.pickDate'));
     return;
   }
 
   if (!timeResult) {
-    showFieldError(inputTime, inputTime.value.trim() ? 'Enter a time like 2:30 PM' : 'Enter a time');
+    showFieldError(inputTime, inputTime.value.trim()
+      ? () => t('error.timeFormat', { example: formatClock(14, 30) })
+      : () => t('error.time'));
     return;
   }
   clearDeadlineErrors();
   inputDate.value = toDateText(dateResult.date);
-  inputTime.value = toTimeText(timeResult.time);
+  inputTime.value = toTimeFieldText(timeResult.time);
   timePeriod = timeResult.period;
 
   // Same "YYYY-MM-DDTHH:mm" format as before. Going through Date turns a
@@ -775,14 +856,15 @@ function updateActionButtons() {
   const count = selectedIds.size;
 
   btnEdit.disabled = count !== 1;
-  btnEdit.title = count === 1 ? 'Edit task'
-    : count === 0 ? 'Select one task to edit'
-    : 'Select only one task to edit';
+  btnEdit.title = t(count === 1 ? 'header.edit'
+    : count === 0 ? 'header.edit.none'
+    : 'header.edit.many');
 
   btnDelete.disabled = count === 0;
-  btnDelete.title = count === 0 ? 'Select tasks to delete'
-    : count === 1 ? 'Delete task'
-    : `Delete ${count} tasks`;
+  btnDelete.title = count === 0 ? t('header.delete.none') : t('header.delete', { count });
+
+  btnEdit.setAttribute('aria-label', btnEdit.title);
+  btnDelete.setAttribute('aria-label', btnDelete.title);
 }
 
 btnEdit.addEventListener('click', () => {
@@ -804,7 +886,7 @@ btnDelete.addEventListener('click', () => {
   applyFilterAndSearch();
 
   const count = removed.length;
-  showToast(`${count} ${count === 1 ? 'task' : 'tasks'} deleted`, 'Undo', () => {
+  showToast(() => t('toast.deleted', { count }), 'toast.undo', () => {
     removed.forEach(({ task, index }) => tasks.splice(index, 0, task));
     saveTasks();
     updateOverdueTasks();
@@ -868,9 +950,12 @@ const filterPriority = document.getElementById('filter-priority');
 filterLabel.addEventListener('change', applyFilterAndSearch);
 filterPriority.addEventListener('change', applyFilterAndSearch);
 
-// Same capitalisation the label pills get from CSS
+// Same capitalisation the label pills get from CSS. Built-in labels show
+// their translated name.
 function formatLabel(label) {
-  return label.replace(/(^|\s)\S/g, c => c.toUpperCase());
+  return BUILT_IN_LABELS.includes(label)
+    ? labelName(label)
+    : label.replace(/(^|\s)\S/g, c => c.toUpperCase());
 }
 
 // Label options come from the labels in use, custom ones included. The
@@ -879,10 +964,10 @@ function updateLabelOptions() {
   const selected = filterLabel.value;
   const labels = [...new Set(tasks.map(t => t.label).filter(Boolean))];
   if (selected !== 'all' && !labels.includes(selected)) labels.push(selected);
-  labels.sort((a, b) => a.localeCompare(b));
+  labels.sort((a, b) => formatLabel(a).localeCompare(formatLabel(b), currentLang));
 
-  filterLabel.innerHTML = '<option value="all">All labels</option>'
-    + labels.map(l => `<option value="${escapeHTML(l)}">${escapeHTML(formatLabel(l))}</option>`).join('');
+  filterLabel.innerHTML = `<option value="all">${escapeHTML(t('filter.allLabels'))}</option>`
+    + labels.map(l => `<option value="${escapeHTML(l)}" dir="auto">${escapeHTML(formatLabel(l))}</option>`).join('');
   filterLabel.value = selected;
 }
 
@@ -952,8 +1037,8 @@ function renderStats() {
   const percent = dueToday.length ? Math.round(done / dueToday.length * 100) : 0;
 
   statsText.textContent = dueToday.length
-    ? `${done} of ${dueToday.length} done today`
-    : 'Nothing due today';
+    ? t('stats.done', { done, total: dueToday.length })
+    : t('stats.none');
   progressBar.style.width = `${percent}%`;
   progressEl.setAttribute('aria-valuenow', percent);
 }
@@ -1092,14 +1177,16 @@ function checkNotifications() {
 
   const now = Date.now();
   let changed = false;
-  tasks.forEach(t => {
-    if (t.completed || notifiedIds.has(t.id)) return;
-    const due = new Date(t.datetime).getTime();
+  tasks.forEach(task => {
+    if (task.completed || notifiedIds.has(task.id)) return;
+    const due = new Date(task.datetime).getTime();
     if (due > now && due - now <= NOTIFY_BEFORE_MS) {
-      new Notification('Task due soon', {
-        body: `${t.name} is due at ${formatDate(t.datetime)}`
+      new Notification(t('notify.title'), {
+        body: t('notify.body', { name: task.name, date: formatDate(task.datetime) }),
+        lang: currentLang,
+        dir: currentLang === 'ar' ? 'rtl' : 'ltr',
       });
-      notifiedIds.add(t.id);
+      notifiedIds.add(task.id);
       changed = true;
     }
   });
@@ -1107,30 +1194,40 @@ function checkNotifications() {
 }
 
 document.getElementById('btn-notif-settings').addEventListener('click', () => {
-  showToast('To manage notifications, go to your browser settings and search for "Notifications" under site permissions for this page.');
+  showToast(() => t('toast.notificationHelp'));
 });
 
-// Export report
+// Export report, in the app's current language
 document.getElementById('btn-export').addEventListener('click', () => {
-  const now = formatDate(new Date());
-  const completed = tasks.filter(t => t.completed).length;
+  const completed = tasks.filter(task => task.completed).length;
   const overdue = tasks.filter(isOverdue).length;
   const active = tasks.length - completed - overdue;
+  const priorityName = p => PRIORITY_RANK[p] === undefined ? p : t(`priority.${p}`);
 
-  let report = `TASK MANAGER — EXPORT REPORT\n`;
-  report += `Generated: ${now}\n`;
-  report += `Total: ${tasks.length} | Active: ${active} | Overdue: ${overdue} | Completed: ${completed}\n`;
-  report += `─────────────────────────────────────────\n\n`;
-
-  tasks.forEach((t, i) => {
-    report += `[${i + 1}] ${t.name}\n`;
-    report += `    Date:     ${formatDate(t.datetime) || 'No date set'}\n`;
-    report += `    Label:    ${t.label}\n`;
-    report += `    Priority: ${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}\n`;
-    report += `    Status:   ${getStatus(t)}\n\n`;
+  const lines = [
+    t('report.title'),
+    t('report.generated', { date: formatDate(new Date()) }),
+    t('report.counts', { total: tasks.length, active, overdue, completed }),
+    '─────────────────────────────────────────',
+    '',
+  ];
+  tasks.forEach((task, i) => {
+    lines.push(
+      `[${formatDigits(i + 1)}] ${task.name}`,
+      t('report.date', { value: formatDate(task.datetime) || t('report.noDate') }),
+      t('report.label', { value: labelName(task.label) }),
+      t('report.priority', { value: priorityName(task.priority) }),
+      t('report.status', { value: getStatus(task) }),
+      '',
+    );
   });
 
-  downloadFile('task-report.txt', report, 'text/plain');
+  // A right-to-left mark at the start of each Arabic line makes Notepad and
+  // other plain text viewers lay it out right to left
+  const rtl = currentLang === 'ar' ? '‏' : '';
+  const report = lines.map(line => line ? rtl + line : line).join('\n') + '\n';
+  // UTF-8 with a byte order mark so Arabic opens correctly in Notepad and Excel
+  downloadFile(t('report.file'), '﻿' + report, 'text/plain;charset=utf-8');
 });
 
 // Backup
@@ -1165,9 +1262,10 @@ document.getElementById('restore-file-input').addEventListener('change', (e) => 
       updateOverdueTasks();
       applyFilterAndSearch();
       closeAside();
-      showToast(`Restored ${tasks.length} tasks successfully.`);
+      const count = tasks.length;
+      showToast(() => t('toast.restored', { count }));
     } catch {
-      showToast('Invalid backup file. Please use a valid tasks-backup.json file.');
+      showToast(() => t('toast.invalidBackup'));
     }
   };
   reader.readAsText(file);
@@ -1183,6 +1281,77 @@ function downloadFile(filename, content, type) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ─── LANGUAGE ────────────────────────────────────────
+
+const btnLang  = document.getElementById('btn-lang');
+const prefLang = document.getElementById('pref-lang');
+
+// Each language is listed in its own script
+prefLang.querySelectorAll('option').forEach(option => {
+  option.textContent = LANGUAGE_NAMES[option.value];
+});
+
+// Puts the whole UI into the current language without a reload. The
+// selection, filters, search text and anything typed in the modal stay.
+function applyLanguage() {
+  const root = document.documentElement;
+  const other = currentLang === 'ar' ? 'en' : 'ar';
+  root.lang = currentLang;
+  root.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+  document.title = t('app.title');
+  translatePage();
+
+  // The header button names the language you would switch to
+  btnLang.textContent = LANGUAGE_NAMES[other];
+  btnLang.lang = other;
+  prefLang.value = currentLang;
+
+  // Modal: times shown as "3:00 PM" or "3:00 م", the preview and any error
+  document.querySelectorAll('[data-quick-time]').forEach(chip => {
+    chip.textContent = toTimeText(chip.dataset.quickTime);
+  });
+  if (document.activeElement !== inputTime) {
+    const time = parseTime(inputTime.value);
+    if (time) {
+      inputTime.value = toTimeFieldText(time.time);
+      timePeriod = time.period;
+    }
+  }
+  if (document.activeElement !== inputDate) {
+    const date = parseDateText(inputDate.value);
+    if (date && date.date) inputDate.value = toDateText(date.date);
+  }
+  modalTitle.textContent = t(editingId ? 'modal.edit' : 'modal.add');
+  updateQuickDateTitles();
+  updateDeadlineSummary();
+  if (deadlineErrorText) deadlineError.textContent = deadlineErrorText();
+
+  // An open calendar is redrawn with the new week start and names
+  if (!calendar.hidden) {
+    const dayFocused = document.activeElement.classList.contains('cal-day');
+    renderCalendar();
+    if (dayFocused) focusCalendarDay();
+  }
+
+  renderToast();
+  applyFilterAndSearch();
+}
+
+function setLanguage(lang, save = true) {
+  if (!STRINGS[lang]) return;
+  currentLang = lang;
+  if (save) localStorage.setItem('lang', lang);
+  applyLanguage();
+}
+
+btnLang.addEventListener('click', () => setLanguage(currentLang === 'ar' ? 'en' : 'ar'));
+prefLang.addEventListener('change', () => setLanguage(prefLang.value));
+
+// A switch made in another open tab of the app
+window.addEventListener('storage', (e) => {
+  if (e.key === 'lang' && e.newValue && e.newValue !== currentLang) setLanguage(e.newValue, false);
+});
 
 // ─── KEYBOARD ────────────────────────────────────────
 
@@ -1202,8 +1371,9 @@ document.addEventListener('keydown', (e) => {
   }
 
   // N opens a new task, but not while typing, with Ctrl/Cmd/Alt held,
-  // or while the modal or side menu is open
-  if (e.key !== 'n' && e.key !== 'N') return;
+  // or while the modal or side menu is open. e.code is the physical key,
+  // so it also works with an Arabic keyboard layout (where N types ى).
+  if (e.code !== 'KeyN') return;
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (isTypingTarget(e.target)) return;
   if (modalOverlay.classList.contains('active') || asideOverlay.classList.contains('active')) return;
@@ -1226,7 +1396,8 @@ modalOverlay.addEventListener('keydown', (e) => {
 function init() {
   loadTasks();
   updateOverdueTasks();
-  applyFilterAndSearch();
+  // Translates the page and draws the list
+  applyLanguage();
   lucide.createIcons();
   // Re-check deadlines every 30s so a task locks itself the moment it
   // becomes overdue, without needing a manual reload. Relative due

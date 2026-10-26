@@ -2,16 +2,19 @@
 
 // Bump the version whenever a cached file changes. Installing a new
 // version deletes the old cache.
-const CACHE_NAME = 'task-manager-v8';
+const CACHE_NAME = 'task-manager-v9';
 
 // Paths are relative to this file, so the app works under /TaskManager-app/
 const APP_SHELL = [
   './',
   'index.html',
   'style.css',
+  'i18n.js',
   'app.js',
   'manifest.webmanifest',
   'lib/lucide-1.51.0.min.js',
+  'fonts/inter-latin.woff2',
+  'fonts/cairo-arabic.woff2',
   'icons/icon-192.png',
   'icons/icon-512.png',
 ];
@@ -36,7 +39,7 @@ self.addEventListener('activate', (e) => {
 
 // Network first for the app's own files, so a new deployment shows up
 // straight away, with the cache as the offline fallback. Requests to
-// other sites (Google Fonts) are left to the browser.
+// other sites are left to the browser.
 self.addEventListener('fetch', (e) => {
   const request = e.request;
   if (request.method !== 'GET') return;

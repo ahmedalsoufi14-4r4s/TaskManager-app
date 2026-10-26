@@ -23,10 +23,11 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - Installable as an app (PWA) and works offline
 - Keyboard shortcuts: N for a new task, Enter to save, Esc to close
 - Quick deadline entry: DD/MM/YYYY date with a calendar, 12-hour time with AM/PM, Today / Tomorrow / Next week and time buttons, with a preview and a warning for past times
+- English and Arabic with a one-click switch: full right-to-left layout, Arabic dates and plurals, and a local Arabic font that works offline
 
 ## Tech stack
 
-HTML, CSS, JavaScript (no frameworks), Lucide icons, Inter font
+HTML, CSS, JavaScript (no frameworks), Lucide icons, Inter and Cairo fonts (self-hosted)
 
 ## Live demo
 

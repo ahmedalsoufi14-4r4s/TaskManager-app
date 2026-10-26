@@ -1,7 +1,9 @@
 {
-  "name": "Task Manager",
+  "name": "Task Manager · مدير المهام",
   "short_name": "Tasks",
-  "description": "A task manager with labels, priorities, deadlines and reminders.",
+  "description": "A task manager with labels, priorities, deadlines and reminders. مدير مهام بالتصنيفات والأولويات والمواعيد والتذكيرات.",
+  "lang": "en",
+  "dir": "auto",
   "id": "./",
   "start_url": "./",
   "scope": "./",
