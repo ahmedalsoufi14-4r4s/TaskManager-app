@@ -55,11 +55,13 @@ const STRINGS = {
 
     'search.placeholder': 'Search tasks...',
     'search.close': 'Close search',
+    'search.clear': 'Clear search',
 
     'filter.all': 'All',
     'filter.active': 'Active',
     'filter.overdue': 'Overdue',
     'filter.completed': 'Completed',
+    'filter.byStatus': 'Filter by status',
     'filter.byLabel': 'Filter by label',
     'filter.allLabels': 'All labels',
     'filter.byPriority': 'Filter by priority',
@@ -218,11 +220,13 @@ const STRINGS = {
 
     'search.placeholder': 'ابحث في المهام…',
     'search.close': 'إغلاق البحث',
+    'search.clear': 'مسح البحث',
 
     'filter.all': 'الكل',
     'filter.active': 'النشطة',
     'filter.overdue': 'المتأخرة',
     'filter.completed': 'المكتملة',
+    'filter.byStatus': 'التصفية حسب الحالة',
     'filter.byLabel': 'التصفية حسب التصنيف',
     'filter.allLabels': 'كل التصنيفات',
     'filter.byPriority': 'التصفية حسب الأولوية',

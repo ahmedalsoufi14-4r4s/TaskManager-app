@@ -4,8 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A task manager with labels, priorities, deadlines and reminders." />
-    <meta name="theme-color" content="#0a7285" />
+    <!-- Browser bar colour per theme: the main purple of the header band -->
+    <meta name="theme-color" content="#2e1f6b" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#3a2a85" media="(prefers-color-scheme: dark)" />
     <title>Task Manager</title>
+    <!-- Theme before the first paint, so dark mode never flashes light -->
+    <script>
+      try { var savedTheme = localStorage.getItem('theme'); } catch (e) {}
+      document.documentElement.dataset.theme = savedTheme === 'light' || savedTheme === 'dark'
+        ? savedTheme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    </script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" href="icons/icon-192.png" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -20,7 +28,7 @@
     <!-- HEADER -->
     <header class="header">
       <div class="header-left">
-        <button class="icon-btn" id="btn-add" data-i18n-title="header.add" data-i18n-aria-label="header.add">
+        <button class="icon-btn shine" id="btn-add" data-i18n-title="header.add" data-i18n-aria-label="header.add">
           <i data-lucide="plus"></i>
         </button>
         <button class="icon-btn" id="btn-delete" disabled>
@@ -52,6 +60,20 @@
       </div>
     </header>
 
+    <!-- TOP BAND: today's progress -->
+    <div class="hero">
+      <div class="stats">
+        <div class="stats-row">
+          <span class="stats-icon" aria-hidden="true"><i data-lucide="target"></i></span>
+          <span class="stats-text" id="stats-text"></span>
+          <span class="stats-percent" id="stats-percent" aria-hidden="true"></span>
+        </div>
+        <div class="progress" id="progress" role="progressbar" data-i18n-aria-label="stats.label" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- MAIN -->
     <main class="main">
 
@@ -59,6 +81,9 @@
       <div class="search-bar" id="search-bar">
         <i data-lucide="search"></i>
         <input type="text" id="search-input" dir="auto" data-i18n-placeholder="search.placeholder" data-i18n-aria-label="header.search" />
+        <button class="icon-btn" id="btn-clear-search" data-i18n-title="search.clear" data-i18n-aria-label="search.clear" hidden>
+          <i data-lucide="circle-x"></i>
+        </button>
         <button class="icon-btn" id="btn-close-search" data-i18n-title="search.close" data-i18n-aria-label="search.close">
           <i data-lucide="x"></i>
         </button>
@@ -66,10 +91,12 @@
 
       <!-- FILTER BAR -->
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-btn active" data-filter="all" data-i18n="filter.all"></button>
-        <button class="filter-btn" data-filter="active" data-i18n="filter.active"></button>
-        <button class="filter-btn" data-filter="overdue" data-i18n="filter.overdue"></button>
-        <button class="filter-btn" data-filter="completed" data-i18n="filter.completed"></button>
+        <div class="segmented status-filter" role="group" data-i18n-aria-label="filter.byStatus">
+          <button class="seg-btn filter-btn active" data-filter="all" data-i18n="filter.all"></button>
+          <button class="seg-btn filter-btn" data-filter="active" data-i18n="filter.active"></button>
+          <button class="seg-btn filter-btn" data-filter="overdue" data-i18n="filter.overdue"></button>
+          <button class="seg-btn filter-btn" data-filter="completed" data-i18n="filter.completed"></button>
+        </div>
         <select class="toolbar-select" id="filter-label" data-i18n-aria-label="filter.byLabel">
           <option value="all" data-i18n="filter.allLabels"></option>
         </select>
@@ -83,26 +110,27 @@
 
       <!-- LIST TOOLBAR -->
       <div class="list-toolbar">
-        <div class="stats">
-          <span class="stats-text" id="stats-text"></span>
-          <div class="progress" id="progress" role="progressbar" data-i18n-aria-label="stats.label" aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar" id="progress-bar"></div>
+        <div class="sort-control">
+          <span id="sort-label" data-i18n="sort.by"></span>
+          <div class="segmented" role="group" aria-labelledby="sort-label">
+            <button type="button" class="seg-btn" data-sort="deadline" aria-pressed="true" data-i18n="sort.deadline"></button>
+            <button type="button" class="seg-btn" data-sort="priority" aria-pressed="false" data-i18n="sort.priority"></button>
           </div>
         </div>
-        <label class="sort-control">
-          <span data-i18n="sort.by"></span>
-          <select class="toolbar-select" id="sort-select">
-            <option value="deadline" data-i18n="sort.deadline"></option>
-            <option value="priority" data-i18n="sort.priority"></option>
-          </select>
-        </label>
       </div>
 
       <!-- TASK LIST -->
       <section class="task-list" id="task-list"></section>
 
-      <!-- EMPTY STATE -->
+      <!-- EMPTY STATE: a clipboard with a check -->
       <div class="empty-state" id="empty-state">
+        <svg class="empty-art" viewBox="0 0 120 120" aria-hidden="true">
+          <rect class="art-board" x="24" y="18" width="66" height="86" rx="12" />
+          <rect class="art-clip" x="41" y="10" width="32" height="16" rx="6" />
+          <path class="art-line" d="M38 48h30M38 62h38M38 76h22" />
+          <circle class="art-badge" cx="86" cy="88" r="17" />
+          <path class="art-tick" d="M78 88l6 6 10-11" />
+        </svg>
         <p></p>
       </div>
 
@@ -174,9 +202,9 @@
                   <input type="text" class="ltr-input" id="input-time" dir="ltr" inputmode="decimal" autocomplete="off"
                     maxlength="12" data-i18n-placeholder="field.timePlaceholder"
                     aria-describedby="deadline-summary deadline-warning deadline-error" />
-                  <div class="ampm" role="group" data-i18n-aria-label="field.ampm">
-                    <button type="button" class="ampm-btn" data-period="AM" aria-pressed="true" data-i18n="time.am"></button>
-                    <button type="button" class="ampm-btn" data-period="PM" aria-pressed="false" data-i18n="time.pm"></button>
+                  <div class="segmented ampm" role="group" data-i18n-aria-label="field.ampm">
+                    <button type="button" class="seg-btn ampm-btn" data-period="AM" aria-pressed="true" data-i18n="time.am"></button>
+                    <button type="button" class="seg-btn ampm-btn" data-period="PM" aria-pressed="false" data-i18n="time.pm"></button>
                   </div>
                 </div>
                 <div class="quick-picks quick-times" role="group" data-i18n-aria-label="quick.times">
@@ -222,7 +250,7 @@
 
         <div class="modal-footer">
           <button class="btn-secondary" id="btn-cancel" data-i18n="modal.cancel"></button>
-          <button class="btn-primary" id="btn-save" data-i18n="modal.save"></button>
+          <button class="btn-primary shine" id="btn-save" data-i18n="modal.save"></button>
         </div>
 
       </div>
@@ -276,7 +304,7 @@
           <h3 class="aside-section-title" data-i18n="menu.exportBackup"></h3>
           <button class="btn-secondary full-width" id="btn-export" data-i18n="menu.exportReport"></button>
           <button class="btn-secondary full-width" id="btn-backup" data-i18n="menu.backup"></button>
-          <button class="btn-primary full-width" id="btn-restore" data-i18n="menu.restore"></button>
+          <button class="btn-main full-width" id="btn-restore" data-i18n="menu.restore"></button>
           <input type="file" id="restore-file-input" accept=".json" style="display:none" />
         </section>
 
@@ -305,7 +333,7 @@
     <!-- TOAST -->
     <div class="toast" id="toast" role="status" aria-live="polite">
       <span id="toast-message"></span>
-      <button class="toast-action" id="toast-action"></button>
+      <button class="toast-action" id="toast-action" hidden></button>
     </div>
 
     <script src="i18n.js"></script>

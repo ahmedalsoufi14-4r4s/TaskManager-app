@@ -36,6 +36,7 @@ let currentSort = localStorage.getItem('sort') || 'deadline';
 
 // Order the groups appear in the list (titles come from i18n.js)
 const GROUPS = ['overdue', 'today', 'upcoming', 'completed'];
+const GROUP_ICONS = { overdue: 'alarm-clock', today: 'sun', upcoming: 'calendar-days', completed: 'circle-check' };
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 
@@ -98,7 +99,8 @@ function renderTasks(filtered = tasks) {
 
   emptyStateEl.style.display = 'none';
 
-  // One header per group, only for groups that have tasks
+  // One header per group, only for groups that have tasks. The icon comes
+  // last in the markup (CSS shows it first), so the title stays firstChild.
   GROUPS.forEach(group => {
     const groupTasks = filtered
       .filter(task => getGroup(task) === group)
@@ -107,13 +109,15 @@ function renderTasks(filtered = tasks) {
 
     const header = document.createElement('h2');
     header.className = `group-header group-${group}`;
-    header.innerHTML = `${t(`group.${group}`)} <span class="group-count">${formatDigits(groupTasks.length)}</span>`;
+    header.innerHTML = `${t(`group.${group}`)} <span class="group-count">${formatDigits(groupTasks.length)}</span>`
+      + `<i data-lucide="${GROUP_ICONS[group]}" aria-hidden="true"></i>`;
     taskListEl.appendChild(header);
 
     groupTasks.forEach(task => taskListEl.appendChild(renderTaskRow(task)));
   });
 
-  lucide.createIcons();
+  // Only the list's icons: Lucide redraws every icon it finds
+  lucide.createIcons({ root: taskListEl });
 }
 
 function renderTaskRow(task) {
@@ -134,10 +138,11 @@ function renderTaskRow(task) {
       <span class="task-name" dir="auto">${escapeHTML(task.name)}</span>
       <span class="task-date" title="${formatFullDate(task.datetime)}">${formatDate(task.datetime)}</span>
       <span class="task-relative${overdue ? ' task-overdue' : ''}" title="${formatFullDate(task.datetime)}">${formatRelative(task)}</span>
-      <span class="task-label" dir="auto" style="background-color: ${getLabelColor(task.label)}">
-        ${escapeHTML(labelName(task.label))}
+      <span class="task-label" dir="auto">
+        <i data-lucide="${LABEL_ICONS[task.label] || 'tag'}" aria-hidden="true"></i>
+        <span class="task-label-text">${escapeHTML(labelName(task.label))}</span>
       </span>
-      <span class="task-priority priority-${task.priority}" title="${priorityTitle}" aria-label="${priorityTitle}"></span>
+      <span class="task-priority priority-${task.priority}" role="img" title="${priorityTitle}" aria-label="${priorityTitle}"><span></span><span></span><span></span></span>
     </div>
     <input type="checkbox" class="task-checkbox" aria-label="${escapeHTML(t('task.markDone', { name: task.name }))}"
       ${task.completed ? 'checked' : ''} ${locked ? `disabled title="${t('task.locked')}"` : ''} />
@@ -226,16 +231,13 @@ function labelName(label) {
   return BUILT_IN_LABELS.includes(label) ? t(`label.${label}`) : label;
 }
 
-// Dark enough for white pill text (at least 5:1)
-function getLabelColor(label) {
-  const colors = {
-    university: '#2563EB',
-    work:       '#C2410C',
-    personal:   '#9333EA',
-    health:     '#15803D',
-  };
-  return colors[label] || '#6B7280';
-}
+// Labels share one main-tinted pill and differ by icon; custom labels get a tag
+const LABEL_ICONS = {
+  university: 'graduation-cap',
+  work:       'briefcase',
+  personal:   'user',
+  health:     'heart-pulse',
+};
 
 // ─── MODAL ───────────────────────────────────────────
 
@@ -430,7 +432,7 @@ function updateDeadlineSummary() {
 // errorText is a function that returns the message in the current
 // language, so a visible error follows a language switch
 function showFieldError(field, errorText = null, moveFocus = true) {
-  field.style.borderColor = '#EF4444';
+  field.classList.add('invalid');
   field.setAttribute('aria-invalid', 'true');
   // A deadline error takes the place of the preview line
   if (errorText) {
@@ -443,7 +445,7 @@ function showFieldError(field, errorText = null, moveFocus = true) {
 }
 
 function clearFieldError(field) {
-  field.style.borderColor = '';
+  field.classList.remove('invalid');
   field.removeAttribute('aria-invalid');
 }
 
@@ -702,6 +704,7 @@ function closeModal() {
   restoreFocus(modalOpener, btnAdd);
 }
 
+
 inputLabel.addEventListener('change', () => {
   customLabelGroup.style.display =
     inputLabel.value === 'other' ? 'flex' : 'none';
@@ -725,7 +728,7 @@ function showToast(getText, actionKey = null, onAction = null) {
   toastText = getText;
   toastActionKey = actionKey;
   renderToast();
-  toastAction.style.display = actionKey ? '' : 'none';
+  toastAction.hidden = !actionKey;
   toastCallback = onAction;
   toastEl.classList.add('active');
   clearTimeout(toastTimer);
@@ -834,7 +837,9 @@ taskListEl.addEventListener('click', (e) => {
   } else {
     selectedIds.add(id);
   }
-  applyFilterAndSearch();
+  // Only the row's look changes, so the list is not redrawn
+  row.classList.toggle('selected', selectedIds.has(id));
+  updateActionButtons();
 });
 
 // The checkbox only toggles "completed"; clicking the row selects it.
@@ -905,11 +910,18 @@ document.getElementById('btn-reload').addEventListener('click', () => {
 const searchBar   = document.getElementById('search-bar');
 const searchInput = document.getElementById('search-input');
 const btnSearch   = document.getElementById('btn-search');
+const btnClearSearch = document.getElementById('btn-clear-search');
 let currentFilter = 'all';
+
+// The clear button only shows while there is text to clear
+function updateClearButton() {
+  btnClearSearch.hidden = !searchInput.value;
+}
 
 function closeSearch() {
   searchBar.classList.remove('active');
   searchInput.value = '';
+  updateClearButton();
   applyFilterAndSearch();
   btnSearch.focus();
 }
@@ -925,7 +937,17 @@ btnSearch.addEventListener('click', () => {
 
 document.getElementById('btn-close-search').addEventListener('click', closeSearch);
 
-searchInput.addEventListener('input', applyFilterAndSearch);
+searchInput.addEventListener('input', () => {
+  updateClearButton();
+  applyFilterAndSearch();
+});
+
+btnClearSearch.addEventListener('click', () => {
+  searchInput.value = '';
+  updateClearButton();
+  applyFilterAndSearch();
+  searchInput.focus();
+});
 
 // ─── FILTER ──────────────────────────────────────────
 
@@ -1015,20 +1037,29 @@ function applyFilterAndSearch() {
 // ─── SORT ────────────────────────────────────────────
 
 // Sorts inside each group. The choice is remembered.
-const sortSelect = document.getElementById('sort-select');
-sortSelect.value = currentSort;
+const sortButtons = document.querySelectorAll('[data-sort]');
 
-sortSelect.addEventListener('change', () => {
-  currentSort = sortSelect.value;
-  localStorage.setItem('sort', currentSort);
-  applyFilterAndSearch();
+function showSort() {
+  sortButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.sort === currentSort)));
+}
+
+sortButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentSort = btn.dataset.sort;
+    localStorage.setItem('sort', currentSort);
+    showSort();
+    applyFilterAndSearch();
+  });
 });
+
+showSort();
 
 // ─── STATS ───────────────────────────────────────────
 
-const statsText   = document.getElementById('stats-text');
-const progressEl  = document.getElementById('progress');
-const progressBar = document.getElementById('progress-bar');
+const statsText    = document.getElementById('stats-text');
+const statsPercent = document.getElementById('stats-percent');
+const progressEl   = document.getElementById('progress');
+const progressBar  = document.getElementById('progress-bar');
 
 // Progress for tasks due today, counted over all tasks (not the filtered list)
 function renderStats() {
@@ -1039,6 +1070,8 @@ function renderStats() {
   statsText.textContent = dueToday.length
     ? t('stats.done', { done, total: dueToday.length })
     : t('stats.none');
+  statsPercent.style.setProperty('--pct', percent);
+  statsPercent.classList.toggle('empty', !dueToday.length);
   progressBar.style.width = `${percent}%`;
   progressEl.setAttribute('aria-valuenow', percent);
 }
@@ -1083,37 +1116,12 @@ asideOverlay.addEventListener('click', (e) => {
 });
 
 // Theme
-// Every colour variable each theme sets. --bg-text, --bg-text-muted,
-// --bg-line and --bg-focus are for things drawn straight on the page
-// background.
-const themes = {
-  light: {
-    '--bg':            '#eef3f4',
-    '--bg-deep':       '#d9e4e6',
-    '--surface':       '#0a7080',
-    '--surface-hi':    '#0b7f91',
-    '--text':          '#ffffff',
-    '--text-muted':    '#d2eef2',
-    '--bg-text':       '#16313a',
-    '--bg-text-muted': '#4a636b',
-    '--bg-line':       'rgba(0,0,0,0.2)',
-    '--bg-focus':      '#0a7080',
-  },
-  dark: {
-    '--bg':            '#846358',
-    '--bg-deep':       '#5c4138',
-    '--surface':       '#0a7285',
-    '--surface-hi':    '#0c8599',
-    '--text':          '#ffffff',
-    '--text-muted':    '#ffdfeb',
-    '--bg-text':       '#ffffff',
-    '--bg-text-muted': '#ffe5ef',
-    '--bg-line':       'rgba(255,255,255,0.2)',
-    '--bg-focus':      '#ffd43b',
-  },
-};
-
+// The colours live in style.css; a theme only sets data-theme on <html>.
+// The theme-color tags keep their own colour for each OS setting under
+// System, and both show the chosen theme's colour otherwise.
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+const themeMetas = [...document.querySelectorAll('meta[name="theme-color"]')];
+themeMetas.forEach(meta => { meta.dataset.color = meta.content; });
 
 const prefTheme = document.getElementById('pref-theme');
 prefTheme.value = localStorage.getItem('theme') || 'system';
@@ -1130,17 +1138,14 @@ systemDark.addEventListener('change', () => {
 });
 
 function applyTheme(theme) {
-  const root = document.documentElement;
-  if (theme === 'light' || theme === 'dark') {
-    Object.entries(themes[theme]).forEach(([name, value]) => {
-      root.style.setProperty(name, value);
-    });
-    // Browser and installed app title bar match the header
-    document.querySelector('meta[name="theme-color"]')
-      .setAttribute('content', themes[theme]['--surface']);
-  } else {
-    applyTheme(systemDark.matches ? 'dark' : 'light');
-  }
+  const shown = theme === 'light' || theme === 'dark' ? theme
+    : systemDark.matches ? 'dark' : 'light';
+  document.documentElement.dataset.theme = shown;
+  // Browser and installed app title bar match the header
+  const chosen = themeMetas.find(meta => meta.media.includes(shown)).dataset.color;
+  themeMetas.forEach(meta => {
+    meta.content = theme === 'system' ? meta.dataset.color : chosen;
+  });
 }
 
 // Notifications
@@ -1392,6 +1397,14 @@ modalOverlay.addEventListener('keydown', (e) => {
   e.preventDefault();
   document.getElementById('btn-save').click();
 });
+
+// ─── MOTION ──────────────────────────────────────────
+
+// The sticky header gets its shadow once the page scrolls under it
+const headerEl = document.querySelector('.header');
+window.addEventListener('scroll', () => {
+  headerEl.classList.toggle('scrolled', window.scrollY > 4);
+}, { passive: true });
 
 // ─── INIT ────────────────────────────────────────────
 

@@ -24,40 +24,98 @@
   padding: 0;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+/* ── Colour tokens ──
+   60-30-10: canvas and surface 60%, main purple 30%, accent yellow 10%.
+   The theme switch only sets data-theme on <html>. Everything below uses
+   these tokens or mixes of them, never raw colours. */
 :root {
-  --bg:         #846358;
-  --bg-deep:    #5c4138;
-  --surface:    #0a7285;
-  --surface-hi: #0c8599;
-  --primary:    #ffd43b;
-  --text:       #ffffff;
-  --text-muted: #ffdfeb;
+  --canvas:    #f7f6fb;
+  --surface:   #ffffff;
+  --text:      #1c1633;
+  --muted:     #5d5775;
+  --main:      #2e1f6b;
+  --main-tint: #2e1f6b;
+  --on-main:   #ffffff;
+  --accent:    #ffd43b;
+  --on-accent: #1c1633;
+  --status:    #c62828;
+  --on-status: #ffffff;
+  /* Near-black from the neutral, for shadows and the dimmed backdrop */
+  --shade:     #1c1633;
 
-  /* Text and borders drawn straight on the page background */
-  --bg-text:       #ffffff;
-  --bg-text-muted: #ffe5ef;
-  --bg-line:       rgba(255,255,255,0.2);
-  --bg-focus:      #ffd43b;
+  --line-mix: 50%;
+  --halo-mix: 60%;
+  --shadow-a: 1;
+  --focus: var(--main);
+  --glow-light:  color-mix(in srgb, var(--on-main) 28%, transparent);
+  --glow-accent: color-mix(in srgb, var(--accent) 42%, transparent);
+  --blob-main:   color-mix(in srgb, var(--main) 17%, transparent);
+  --blob-accent: color-mix(in srgb, var(--accent) 36%, transparent);
+  --wave-mid:    color-mix(in srgb, var(--main) 55%, transparent);
+  --wave-back:   color-mix(in srgb, var(--main) 26%, transparent);
+  color-scheme: light;
+}
 
-  --label-university: #2563EB;
-  --label-work:       #C2410C;
-  --label-personal:   #9333EA;
-  --label-health:     #15803D;
-  --label-custom:     #6B7280;
+:root[data-theme="dark"] {
+  --canvas:    #100d1c;
+  --surface:   #1c1731;
+  --text:      #f2effa;
+  --muted:     #b3abcf;
+  --main:      #3a2a85;
+  --main-tint: #b9a8ff;
+  --on-main:   #ffffff;
+  --accent:    #ffd43b;
+  --on-accent: #1c1633;
+  --status:    #ff8a80;
+  --on-status: #1c1633;
+  --shade:     #05030c;
 
-  --priority-high:   #EF4444;
-  --priority-medium: #F59E0B;
-  --priority-low:    #22C55E;
+  --line-mix: 42%;
+  --halo-mix: 85%;
+  --shadow-a: 3;
+  --focus: var(--accent);
+  --glow-light:  color-mix(in srgb, var(--main-tint) 30%, transparent);
+  --glow-accent: color-mix(in srgb, var(--accent) 26%, transparent);
+  --blob-main:   color-mix(in srgb, var(--main-tint) 17%, transparent);
+  --blob-accent: color-mix(in srgb, var(--accent) 8%, transparent);
+  --wave-mid:    color-mix(in srgb, var(--main) 60%, var(--main-tint));
+  --wave-back:   color-mix(in srgb, var(--main-tint) 22%, transparent);
+  color-scheme: dark;
+}
 
-  --overdue: #DC2626;
+/* Mixes of the tokens above: greys come from the text colour, tints from
+   the main colour */
+:root {
+  --line:         color-mix(in srgb, var(--text) 12%, var(--surface));
+  --line-strong:  color-mix(in srgb, var(--text) var(--line-mix), var(--surface));
+  --main-soft:    color-mix(in srgb, var(--main-tint) 10%, var(--surface));
+  --main-deep:    color-mix(in srgb, var(--main) 78%, var(--shade));
+  --hover-tint:   color-mix(in srgb, var(--main-tint) 10%, transparent);
+  --press-tint:   color-mix(in srgb, var(--main-tint) 18%, transparent);
+  --status-soft:  color-mix(in srgb, var(--status) 10%, var(--surface));
+  --on-main-soft: color-mix(in srgb, var(--on-main) 16%, transparent);
+  --on-main-line: color-mix(in srgb, var(--on-main) 45%, transparent);
+  --halo:         color-mix(in srgb, var(--accent) var(--halo-mix), transparent);
+  --shine:        color-mix(in srgb, var(--on-main) 65%, transparent);
+  --pattern:      color-mix(in srgb, var(--on-main) 10%, transparent);
+  --scrim:        color-mix(in srgb, var(--shade) 55%, transparent);
+
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--shade) calc(var(--shadow-a) * 8%), transparent),
+               0 2px 8px color-mix(in srgb, var(--shade) calc(var(--shadow-a) * 5%), transparent);
+  --shadow-md: 0 4px 10px color-mix(in srgb, var(--shade) calc(var(--shadow-a) * 10%), transparent),
+               0 12px 28px color-mix(in srgb, var(--shade) calc(var(--shadow-a) * 9%), transparent);
+  --shadow-lg: 0 12px 24px color-mix(in srgb, var(--shade) calc(var(--shadow-a) * 14%), transparent),
+               0 28px 60px color-mix(in srgb, var(--shade) calc(var(--shadow-a) * 18%), transparent);
 
   /* Inter has no Arabic letters, so Arabic text falls through to Cairo in
      either language. System fonts are the last resort. */
   --font: 'Inter', 'Cairo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --radius: 10px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
-  --shadow-md: 0 4px 14px rgba(0,0,0,0.3);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,0.4);
+  --radius: 12px;
+  --radius-lg: 18px;
 
   /* 1 left to right, -1 right to left, for transforms that must mirror */
   --dir: 1;
@@ -68,7 +126,7 @@
 }
 
 body {
-  background: radial-gradient(circle at top, var(--bg) 0%, var(--bg-deep) 100%);
+  background-color: var(--canvas);
   color: var(--text);
   font-family: var(--font);
   font-size: 16px;
@@ -88,19 +146,33 @@ html[lang="ar"] .aside-section-title {
   text-transform: none;
 }
 
+/* Keyboard focus ring: main colour on light surfaces, yellow on the
+   purple bands and in dark mode (--focus) */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 /* ── Header ── */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
-  background-color: var(--surface);
-  box-shadow: var(--shadow-md);
+  padding: 10px 24px;
+  background-color: var(--main);
+  color: var(--on-main);
+  --focus: var(--accent);
   position: sticky;
   top: 0;
   z-index: 50;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  transition: box-shadow 0.3s ease-out;
+}
+
+/* Shadow once the page scrolls under it */
+.header.scrolled {
+  box-shadow: var(--shadow-md);
 }
 
 .header-left,
@@ -118,49 +190,60 @@ html[lang="ar"] .aside-section-title {
 .app-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--on-main);
   letter-spacing: -0.01em;
 }
 
 .icon-btn {
-  background: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background-color: transparent;
   border: none;
+  border-radius: 50%;
   cursor: pointer;
-  color: var(--text);
-  padding: 8px;
-  border-radius: var(--radius);
+  color: var(--main-tint);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, transform 0.1s;
+  transition: background-color 0.2s ease-out, transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
-.icon-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+.icon-btn svg {
+  transition: transform 0.3s ease-out;
 }
 
-.icon-btn:active {
-  transform: scale(0.92);
+.header .icon-btn {
+  color: var(--on-main);
+}
+
+/* Add task: the accent button in the header */
+#btn-add {
+  background-color: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 2px 10px var(--halo);
+}
+
+#btn-menu svg > * {
+  transition: transform 0.25s ease-out;
 }
 
 /* Language switch: names the other language in its own script */
 .lang-btn {
-  background: none;
-  border: 1px solid rgba(255,255,255,0.35);
+  min-height: 44px;
+  background-color: transparent;
+  border: 1.5px solid var(--on-main-line);
   border-radius: 999px;
-  color: var(--text);
+  color: var(--on-main);
   font-family: var(--font);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
-  padding: 7px 14px;
+  padding: 0 16px;
   margin-inline-end: 6px;
   cursor: pointer;
-  transition: background 0.15s;
-}
-
-.lang-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out;
 }
 
 /* Edit/Delete with nothing (or too much) selected */
@@ -169,50 +252,151 @@ html[lang="ar"] .aside-section-title {
   cursor: not-allowed;
 }
 
-.icon-btn:disabled:hover {
-  background-color: transparent;
+/* ── Top band ──
+   Purple band under the header with today's progress, drifting glows, a
+   faint check-mark pattern and waves along its bottom edge. It scrolls
+   away, so the sticky header stays compact. */
+.hero {
+  position: relative;
+  z-index: 1;
+  background-color: var(--main);
+  color: var(--on-main);
+  --focus: var(--accent);
+  padding: 8px 24px 20px;
+  margin-bottom: 56px;
 }
 
-.icon-btn:disabled:active {
-  transform: none;
+/* Today's progress, on a solid card so the text stays readable over the
+   moving glows. Not clickable: it lifts and its icon spins on hover. */
+.stats {
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  background-color: var(--main-deep);
+  border: 1px solid var(--on-main-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
 }
 
-/* Keyboard focus ring. Elements on the page background use --bg-focus
-   so the ring stays visible in light mode. */
-button:focus-visible,
-.task-checkbox:focus-visible,
-.toggle input:focus-visible + .toggle-slider,
-.pref-row select:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.filter-btn:focus-visible,
-.toolbar-select:focus-visible {
-  outline: 2px solid var(--bg-focus);
-  outline-offset: 2px;
+.stats-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--on-main-soft);
+  color: var(--on-main);
+}
+
+.stats-icon svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.6s ease-out;
+}
+
+.stats-text {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--on-main);
+}
+
+.stats-percent {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  counter-reset: pct var(--pct);
+}
+
+.stats-percent::after {
+  content: counter(pct) '%';
+}
+
+.stats-percent.empty {
+  visibility: hidden;
+}
+
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--on-main-soft);
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--accent);
+  transition: width 0.6s ease-out;
 }
 
 /* ── Main layout ── */
 .main {
-  padding: 24px;
+  position: relative;
+  z-index: 1;
+  padding: 8px 24px 40px;
   max-width: 900px;
   margin: 0 auto;
 }
 
+/* Copies of deleted rows fade out here (see app.js) */
+.ghost-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Not clickable: lifts, tilts and its picture bobs on hover */
 .empty-state {
   text-align: center;
-  margin-top: 100px;
-  color: var(--bg-text-muted);
+  max-width: 420px;
+  margin: 32px auto 0;
+  padding: 28px 24px 30px;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
+  color: var(--muted);
   font-size: 16px;
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
 }
+
+.empty-art {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 14px;
+}
+
+.empty-art .art-board { fill: var(--main-soft); stroke: var(--main-tint); stroke-width: 3; }
+.empty-art .art-clip  { fill: var(--main-tint); }
+.empty-art .art-line  { stroke: var(--line-strong); stroke-width: 4; stroke-linecap: round; }
+.empty-art .art-badge { fill: var(--accent); stroke: var(--main-tint); stroke-width: 3; }
+.empty-art .art-tick  { fill: none; stroke: var(--on-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ── Modal overlay ── */
 .modal-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.65);
+  background-color: var(--scrim);
   z-index: 100;
   align-items: center;
   justify-content: center;
@@ -225,7 +409,8 @@ button:focus-visible,
 
 .modal {
   background-color: var(--surface);
-  border-radius: 16px;
+  color: var(--text);
+  border-radius: 22px;
   width: 100%;
   max-width: 480px;
   padding: 28px;
@@ -233,7 +418,7 @@ button:focus-visible,
   flex-direction: column;
   gap: 20px;
   box-shadow: var(--shadow-lg);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--line);
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -245,9 +430,9 @@ button:focus-visible,
 }
 
 .modal-title {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--main-tint);
 }
 
 .modal-body {
@@ -264,32 +449,50 @@ button:focus-visible,
 
 .form-group label {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--muted);
   font-weight: 600;
 }
 
+/* Fields: the border and a ring close in on focus */
 .form-group input,
 .form-group select {
-  background-color: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  min-height: 48px;
+  background-color: var(--canvas);
+  border: 1.5px solid var(--line-strong);
   border-radius: var(--radius);
   color: var(--text);
   font-family: var(--font);
   font-size: 15px;
-  padding: 11px 12px;
-  outline: none;
-  transition: border-color 0.15s, background 0.15s;
+  padding: 10px 12px;
+  outline: 2px solid transparent;
+  outline-offset: 6px;
+  transition: border-color 0.2s ease-out, background-color 0.2s ease-out,
+              outline-color 0.2s ease-out, outline-offset 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
 .form-group input:focus,
 .form-group select:focus {
-  border-color: var(--primary);
-  background-color: rgba(0,0,0,0.28);
+  border-color: var(--main-tint);
+  background-color: var(--surface);
+  outline-color: var(--focus);
+  outline-offset: 2px;
+}
+
+/* Field with an error (red is kept for overdue tasks) */
+.form-group input.invalid {
+  border-color: var(--main-tint);
+  background-color: var(--main-soft);
+  box-shadow: inset 0 0 0 1.5px var(--main-tint);
+}
+
+.form-group input::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 .form-group select option {
-  background-color: var(--bg-deep);
-  color: var(--bg-text);
+  background-color: var(--surface);
+  color: var(--text);
 }
 
 #custom-label-group {
@@ -304,7 +507,7 @@ button:focus-visible,
 
 .deadline legend {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--muted);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -318,7 +521,7 @@ button:focus-visible,
 .deadline-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -330,7 +533,6 @@ button:focus-visible,
 .deadline input {
   width: 100%;
   min-width: 0;
-  min-height: 44px;
 }
 
 /* Field with a button beside it (calendar, AM/PM) */
@@ -350,52 +552,82 @@ button:focus-visible,
   text-align: right;
 }
 
-.input-side-btn,
-.ampm-btn {
-  min-width: 44px;
-  min-height: 44px;
-  background-color: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.25);
+.input-side-btn {
+  min-width: 48px;
+  min-height: 48px;
+  background-color: var(--canvas);
+  border: 1.5px solid var(--line-strong);
   border-radius: var(--radius);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 13px;
-  font-weight: 700;
+  color: var(--main-tint);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
-.input-side-btn:hover,
-.ampm-btn:hover {
-  background-color: rgba(255,255,255,0.14);
+.input-side-btn svg {
+  transition: transform 0.3s ease-out;
 }
 
-.input-side-btn[aria-expanded="true"],
-.ampm-btn[aria-pressed="true"] {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: #1e1600;
+.input-side-btn[aria-expanded="true"] {
+  background-color: var(--main);
+  border-color: var(--main-tint);
+  color: var(--on-main);
 }
 
-/* AM/PM as one segmented control */
+/* ── Segmented controls (status filter, sort, AM/PM) ──
+   The group's ::before is a pill that slides to the active item. app.js
+   sets its start offset and width, measured from the start side, so it
+   slides the mirrored way in Arabic. The active item takes the same fill
+   once the pill has arrived. */
+.segmented {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  --seg-fill: var(--accent);
+  --seg-text: var(--on-accent);
+  --seg-edge: var(--main-tint);
+}
+
+.seg-btn {
+  min-width: 44px;
+  min-height: 45px;
+  padding: 0 16px;
+  background-color: transparent;
+  border: none;
+  border-radius: inherit;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease-out, background-color 0s, box-shadow 0s, transform 0.15s ease-out;
+}
+
+.seg-btn.active,
+.seg-btn[aria-pressed="true"] {
+  color: var(--seg-text);
+  background-color: var(--seg-fill);
+  box-shadow: inset 0 0 0 2px var(--seg-edge);
+}
+
+/* AM/PM uses the main colour, not the accent */
 .ampm {
-  display: flex;
+  border-radius: var(--radius);
+  background-color: var(--canvas);
+  --seg-fill: var(--main);
+  --seg-text: var(--on-main);
 }
 
-.ampm-btn:first-child {
-  border-radius: 0;
-  border-start-start-radius: var(--radius);
-  border-end-start-radius: var(--radius);
-}
-
-.ampm-btn:last-child {
-  border-radius: 0;
-  border-start-end-radius: var(--radius);
-  border-end-end-radius: var(--radius);
-  border-inline-start: none;
+.ampm .seg-btn {
+  min-width: 46px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 /* Month calendar under the date field */
@@ -404,16 +636,18 @@ button:focus-visible,
   top: calc(100% + 6px);
   inset-inline-start: 0;
   z-index: 20;
-  width: 288px;
+  width: 332px;
   padding: 12px;
-  background: linear-gradient(rgba(0,0,0,0.18), rgba(0,0,0,0.18)), var(--surface);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: var(--radius);
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 18px;
   box-shadow: var(--shadow-lg);
+  transform-origin: top left;
 }
 
-.calendar[hidden] {
-  display: none;
+[dir="rtl"] .calendar {
+  transform-origin: top right;
 }
 
 .calendar-header {
@@ -424,31 +658,30 @@ button:focus-visible,
 }
 
 .calendar-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
 }
 
 .calendar-nav {
-  width: 36px;
-  height: 36px;
-  background: none;
+  width: 44px;
+  height: 44px;
+  background-color: transparent;
   border: none;
-  border-radius: var(--radius);
-  color: var(--text);
+  border-radius: 50%;
+  color: var(--main-tint);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.2s ease-out;
 }
 
-.calendar-nav:hover {
-  background-color: rgba(255,255,255,0.14);
-}
-
-/* Month arrows point the other way in right to left */
+/* Month arrows point the other way in right to left, and nudge the way
+   they point on hover */
 .calendar-nav svg {
   transform: scaleX(var(--dir));
+  transition: transform 0.2s ease-out;
 }
 
 .calendar-grid {
@@ -460,7 +693,7 @@ button:focus-visible,
 .calendar-grid th {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--muted);
   padding-bottom: 4px;
 }
 
@@ -471,34 +704,27 @@ button:focus-visible,
 
 .cal-day {
   width: 100%;
-  height: 36px;
-  background: none;
+  height: 44px;
+  background-color: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;
   cursor: pointer;
-}
-
-.cal-day:hover {
-  background-color: rgba(255,255,255,0.14);
+  transition: background-color 0.15s ease-out, transform 0.15s ease-out;
 }
 
 .cal-day[aria-current="date"] {
-  box-shadow: inset 0 0 0 1px var(--primary);
+  box-shadow: inset 0 0 0 1.5px var(--main-tint);
   font-weight: 700;
 }
 
 .cal-day[aria-pressed="true"] {
-  background-color: var(--primary);
-  color: #1e1600;
+  background-color: var(--accent);
+  color: var(--on-accent);
+  box-shadow: inset 0 0 0 2px var(--main-tint);
   font-weight: 700;
-}
-
-.deadline input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.8;
 }
 
 .quick-picks {
@@ -508,27 +734,24 @@ button:focus-visible,
 }
 
 .chip {
-  background-color: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.25);
+  min-height: 44px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
   border-radius: 999px;
   color: var(--text);
   font-family: var(--font);
   font-size: 13px;
   font-weight: 600;
-  min-height: 32px;
-  padding: 5px 12px;
+  padding: 0 14px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.chip:hover {
-  background-color: rgba(255,255,255,0.14);
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out,
+              transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
 .chip[aria-pressed="true"] {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: #1e1600;
+  background-color: var(--main);
+  border-color: var(--main-tint);
+  color: var(--on-main);
 }
 
 .deadline-summary {
@@ -538,26 +761,38 @@ button:focus-visible,
   margin-top: 4px;
 }
 
+/* Info boxes under the deadline. Not clickable: they lift a little. */
 .deadline-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 13px;
-  padding: 7px 10px;
-  border-inline-start: 3px solid;
-  border-radius: 6px;
-  background-color: rgba(0,0,0,0.18);
-}
-
-.deadline-warning {
-  color: #fff3bf;
-  border-inline-start-color: var(--primary);
+  color: var(--text);
+  padding: 9px 12px;
+  border-inline-start: 3px solid var(--main-tint);
+  border-radius: 8px;
+  background-color: var(--main-soft);
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
 .deadline-error {
-  color: #ffffff;
-  border-inline-start-color: #ff6b6b;
+  font-weight: 600;
 }
 
-.deadline-note[hidden] {
-  display: none;
+/* A round "!" before the error text */
+.deadline-error::before {
+  content: '!';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--main-tint);
+  color: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .modal-footer {
@@ -567,91 +802,111 @@ button:focus-visible,
   flex-wrap: wrap;
 }
 
-.btn-primary {
-  background-color: var(--primary);
-  color: #1e1600;
-  border: none;
+/* ── Buttons ──
+   They lift on hover and press in. Only Add task and Save task use the
+   accent, and both get a shine sweep from the start side. */
+.btn-primary,
+.btn-secondary,
+.btn-main {
+  position: relative;
+  overflow: hidden;
+  min-height: 48px;
+  padding: 0 22px;
   border-radius: var(--radius);
-  padding: 11px 22px;
   font-family: var(--font);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
-  box-shadow: 0 2px 8px rgba(255, 212, 59, 0.35);
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, background-color 0.2s ease-out, border-color 0.2s ease-out;
 }
 
-.btn-primary:hover {
-  opacity: 0.9;
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-main:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
-.btn-primary:active {
-  transform: scale(0.97);
+.btn-primary {
+  background-color: var(--accent);
+  color: var(--on-accent);
+  border: 2px solid var(--main-tint);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary {
-  background-color: rgba(255,255,255,0.06);
-  color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--radius);
-  padding: 11px 22px;
-  font-family: var(--font);
-  font-size: 15px;
-  cursor: pointer;
-  transition: background 0.15s;
+  background-color: var(--surface);
+  color: var(--main-tint);
+  border: 1.5px solid var(--line-strong);
 }
 
-.btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.14);
+.btn-main {
+  background-color: var(--main);
+  color: var(--on-main);
+  border: 2px solid var(--main-tint);
 }
 
 /* ── Task row ── */
 .task-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 14px;
   background-color: var(--surface);
-  border-radius: var(--radius);
-  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 18px;
   margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(255,255,255,0.06);
-  transition: box-shadow 0.15s, transform 0.1s, opacity 0.2s, outline-color 0.15s;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
   cursor: pointer;
 }
 
-.task-row:hover {
+/* Keyboard focus on the card's checkbox lights up the whole card */
+.task-row:has(.task-checkbox:focus-visible) {
+  border-color: var(--main-tint);
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
 }
 
-/* Click-to-select highlight, used for edit/delete */
+/* Click-to-select highlight, used for edit/delete: a main-colour outline
+   with a yellow halo around it */
 .task-row.selected {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.task-row.completed {
-  opacity: 0.5;
+  outline: 2px solid var(--main-tint);
+  outline-offset: 0;
+  box-shadow: 0 0 0 6px var(--halo), var(--shadow-md);
 }
 
 .task-row.completed .task-name {
+  color: var(--muted);
   text-decoration: line-through;
 }
 
-/* Deadline passed without being completed. The thick bar is on the
-   start side, so it moves to the right in Arabic. */
+.task-row.completed .task-label,
+.task-row.completed .task-relative {
+  color: var(--muted);
+  background-color: var(--canvas);
+  border-color: var(--line);
+}
+
+.task-row.completed .task-priority span {
+  background-color: var(--line);
+}
+
+/* Deadline passed without being completed. The red bar is on the start
+   side, so it moves to the right in Arabic. */
 .task-row.overdue {
-  border-color: var(--overdue);
-  border-inline-start-width: 4px;
+  border-inline-start: 4px solid var(--status);
 }
 
 /* Relative due time, e.g. "in 2 h" */
 .task-relative {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text);
-  background-color: rgba(0,0,0,0.18);
+  color: var(--main-tint);
+  background-color: var(--main-soft);
   padding: 4px 10px;
   border-radius: 999px;
   flex-shrink: 0;
@@ -664,14 +919,14 @@ button:focus-visible,
 
 .task-relative.task-overdue {
   font-weight: 700;
-  color: #fff;
-  background-color: var(--overdue);
+  color: var(--status);
+  background-color: var(--status-soft);
 }
 
 .task-info {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
@@ -689,75 +944,167 @@ button:focus-visible,
 
 .task-date {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--muted);
   flex-shrink: 0;
 }
 
+/* Label pill: main-tinted, with the label's own icon */
 .task-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
-  padding: 4px 11px;
+  color: var(--main-tint);
+  background-color: var(--main-soft);
+  border: 1px solid var(--hover-tint);
+  padding: 3px 10px;
   border-radius: 999px;
   text-transform: capitalize;
   flex-shrink: 0;
   max-width: 160px;
+}
+
+.task-label svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease-out;
+}
+
+.task-label-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 
+/* Priority as 1, 2 or 3 bars; only High uses the status colour */
 .task-priority {
-  display: inline-block;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.08);
 }
 
-.priority-high   { background-color: #EF4444; }
-.priority-medium { background-color: #F59E0B; }
-.priority-low    { background-color: #22C55E; }
+.task-priority span {
+  width: 4px;
+  border-radius: 2px;
+  background-color: var(--line);
+}
 
+.task-priority span:nth-child(1) { height: 6px; }
+.task-priority span:nth-child(2) { height: 10px; }
+.task-priority span:nth-child(3) { height: 14px; }
+
+.priority-low span:nth-child(1),
+.priority-medium span:nth-child(-n+2) {
+  background-color: var(--main-tint);
+}
+
+.priority-high span {
+  background-color: var(--status);
+}
+
+/* Checkbox in the main colour. ::before is the tick, ::after widens the
+   tap target to 48px. */
 .task-checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: var(--primary);
+  appearance: none;
+  position: relative;
+  display: grid;
+  place-content: center;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
+  background-color: var(--surface);
+  border: 2px solid var(--main-tint);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.15s ease-out;
+}
+
+.task-checkbox::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  background-color: var(--surface);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform: scale(0);
+  transition: transform 0.2s ease-out;
+}
+
+.task-checkbox::after {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+
+.task-checkbox:checked {
+  background-color: var(--main-tint);
+}
+
+.task-checkbox:checked::before {
+  transform: scale(1);
 }
 
 /* Deadline has passed — task is auto-locked */
 .task-checkbox:disabled {
-  opacity: 0.6;
   cursor: not-allowed;
+  border-color: var(--line-strong);
+  background-color: var(--canvas);
+  transform: none;
+}
+
+.task-checkbox:checked:disabled {
+  border-color: var(--muted);
+  background-color: var(--muted);
 }
 
 /* ── Search bar ── */
 .search-bar {
   display: none;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   background-color: var(--surface);
-  border-radius: var(--radius);
-  padding: 12px 16px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: 2px 4px;
+  padding-inline-start: 16px;
   margin-bottom: 14px;
   box-shadow: var(--shadow-sm);
+  outline: 2px solid transparent;
+  outline-offset: 6px;
+  transition: border-color 0.2s ease-out, outline-color 0.2s ease-out, outline-offset 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
 .search-bar.active {
   display: flex;
 }
 
-.search-bar svg {
-  color: var(--text-muted);
+.search-bar:focus-within {
+  border-color: var(--main-tint);
+  outline-color: var(--focus);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-md);
+}
+
+.search-bar > svg {
+  color: var(--muted);
   flex-shrink: 0;
+  margin-inline-end: 6px;
+  transition: transform 0.3s ease-out, color 0.3s ease-out;
+}
+
+.search-bar:focus-within > svg {
+  color: var(--main-tint);
+  transform: rotate(calc(-14deg * var(--dir))) scale(1.12);
 }
 
 .search-bar input {
   flex: 1;
+  min-width: 0;
+  min-height: 44px;
   background: none;
   border: none;
   outline: none;
@@ -767,7 +1114,7 @@ button:focus-visible,
 }
 
 .search-bar input::placeholder {
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 /* ── Filter bar ── */
@@ -776,33 +1123,11 @@ button:focus-visible,
   gap: 8px;
   margin-bottom: 14px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .filter-bar.active {
   display: flex;
-}
-
-.filter-btn {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--bg-line);
-  border-radius: 999px;
-  color: var(--bg-text);
-  font-family: var(--font);
-  font-size: 14px;
-  padding: 7px 18px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.filter-btn:hover {
-  background-color: rgba(255,255,255,0.14);
-}
-
-.filter-btn.active {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: #1e1600;
-  font-weight: 700;
 }
 
 /* ── List toolbar ── */
@@ -811,94 +1136,84 @@ button:focus-visible,
   align-items: center;
   justify-content: space-between;
   gap: 12px 20px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
-}
-
-/* Today's progress */
-.stats {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-  min-width: 160px;
-  max-width: 320px;
-}
-
-.stats-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--bg-text);
-}
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background-color: var(--bg-line);
-  overflow: hidden;
-}
-
-.progress-bar {
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background-color: var(--primary);
-  transition: width 0.3s;
 }
 
 .sort-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-inline-start: auto;
   font-size: 13px;
-  color: var(--bg-text);
+  font-weight: 600;
+  color: var(--text);
 }
 
-/* Small pill dropdown used for sort and filters */
+/* Pill dropdowns for the label and priority filters */
 .toolbar-select {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--bg-line);
+  min-height: 48px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
   border-radius: 999px;
-  color: var(--bg-text);
+  color: var(--text);
   font-family: var(--font);
   font-size: 14px;
-  padding: 7px 12px;
+  padding: 0 14px;
   cursor: pointer;
-  outline: none;
+  outline: 2px solid transparent;
+  outline-offset: 6px;
+  transition: border-color 0.2s ease-out, transform 0.2s ease-out, box-shadow 0.2s ease-out,
+              outline-color 0.2s ease-out, outline-offset 0.2s ease-out;
 }
 
-.toolbar-select:focus-visible,
-.toolbar-select.active {
-  border-color: var(--primary);
+.toolbar-select:focus-visible {
+  outline-color: var(--focus);
+  outline-offset: 2px;
 }
 
 /* A label or priority filter is set */
 .toolbar-select.active {
-  box-shadow: inset 0 0 0 1px var(--primary);
+  border-color: var(--main-tint);
+  background-color: var(--main-soft);
+  box-shadow: inset 0 0 0 1px var(--main-tint);
   font-weight: 600;
 }
 
 .toolbar-select option {
-  background-color: var(--bg-deep);
-  color: var(--bg-text);
+  background-color: var(--surface);
+  color: var(--text);
 }
 
-/* ── Task groups ── */
+/* ── Task groups ──
+   Not clickable: the header lifts and its icon wiggles on hover */
 .group-header {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--bg-text);
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin: 24px 0 10px;
+  transition: transform 0.2s ease-out;
 }
 
 .group-header:first-child {
   margin-top: 4px;
+}
+
+.group-header svg {
+  order: -1;
+  width: 18px;
+  height: 18px;
+  color: var(--main-tint);
+  transition: transform 0.3s ease-out;
+}
+
+.group-overdue svg {
+  color: var(--status);
 }
 
 .group-count {
@@ -906,12 +1221,13 @@ button:focus-visible,
   letter-spacing: 0;
   padding: 1px 8px;
   border-radius: 999px;
-  background-color: var(--bg-line);
+  background-color: var(--main);
+  color: var(--on-main);
 }
 
 .group-overdue .group-count {
-  background-color: var(--overdue);
-  color: #fff;
+  background-color: var(--status);
+  color: var(--on-status);
 }
 
 /* ── Aside overlay ── */
@@ -919,7 +1235,7 @@ button:focus-visible,
   display: none;
   position: fixed;
   inset: 0;
-  background-color: rgba(0,0,0,0.65);
+  background-color: var(--scrim);
   z-index: 200;
   justify-content: flex-end;
 }
@@ -930,6 +1246,7 @@ button:focus-visible,
 
 .aside {
   background-color: var(--surface);
+  color: var(--text);
   width: 100%;
   max-width: 340px;
   height: 100%;
@@ -939,7 +1256,7 @@ button:focus-visible,
   overflow-y: auto;
   padding: 24px;
   box-shadow: var(--shadow-lg);
-  animation: aside-in 0.2s ease-out;
+  animation: aside-in 0.3s ease-out;
 }
 
 /* The menu slides in from the side its button is on: right in English,
@@ -950,46 +1267,47 @@ button:focus-visible,
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .aside {
-    animation: none;
-  }
-}
-
 .aside-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .aside-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--main-tint);
 }
 
 .aside-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 20px 0;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid var(--line);
 }
 
 .aside-section-title {
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 4px;
 }
 
+/* Menu rows light up under the pointer */
 .pref-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 4px 10px;
+  margin-inline: -10px;
+  border-radius: var(--radius);
+  transition: background-color 0.2s ease-out;
 }
 
 .pref-label {
@@ -998,14 +1316,23 @@ button:focus-visible,
 }
 
 .pref-row select {
-  background-color: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.15);
+  min-height: 44px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
   border-radius: var(--radius);
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;
-  padding: 7px 10px;
-  outline: none;
+  padding: 0 10px;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: 6px;
+  transition: border-color 0.2s ease-out, outline-color 0.2s ease-out, outline-offset 0.2s ease-out;
+}
+
+.pref-row select:focus-visible {
+  outline-color: var(--focus);
+  outline-offset: 2px;
 }
 
 /* Toggle switch */
@@ -1013,7 +1340,7 @@ button:focus-visible,
   position: relative;
   display: inline-block;
   width: 46px;
-  height: 26px;
+  height: 44px;
   cursor: pointer;
 }
 
@@ -1025,10 +1352,10 @@ button:focus-visible,
 
 .toggle-slider {
   position: absolute;
-  inset: 0;
-  background-color: rgba(255,255,255,0.2);
+  inset: 9px 0;
+  background-color: var(--line-strong);
   border-radius: 999px;
-  transition: background 0.2s;
+  transition: background-color 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
 .toggle-slider::before {
@@ -1038,18 +1365,23 @@ button:focus-visible,
   height: 20px;
   inset-inline-start: 3px;
   top: 3px;
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  transition: transform 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease-out;
 }
 
 .toggle input:checked + .toggle-slider {
-  background-color: var(--primary);
+  background-color: var(--main-tint);
 }
 
 .toggle input:checked + .toggle-slider::before {
   transform: translateX(calc(20px * var(--dir)));
+}
+
+.toggle input:focus-visible + .toggle-slider {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .full-width {
@@ -1079,15 +1411,16 @@ kbd {
   display: inline-block;
   min-width: 28px;
   padding: 3px 8px;
-  border: 1px solid rgba(255,255,255,0.3);
-  border-bottom-width: 2px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 3px;
   border-radius: 6px;
-  background-color: rgba(0,0,0,0.18);
+  background-color: var(--canvas);
   color: var(--text);
   font-family: var(--font);
   font-size: 12px;
   font-weight: 700;
   text-align: center;
+  transition: transform 0.15s ease-out, border-bottom-width 0.15s ease-out;
 }
 
 /* ── Toast ── */
@@ -1095,51 +1428,48 @@ kbd {
   position: fixed;
   left: 50%;
   bottom: 24px;
-  transform: translate(-50%, 20px);
+  transform: translate(-50%, 24px);
   display: flex;
   align-items: center;
   gap: 14px;
   width: max-content;
   max-width: calc(100% - 32px);
-  background-color: var(--surface);
-  color: var(--text);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: var(--radius);
-  padding: 12px 18px;
+  min-height: 56px;
+  background-color: var(--main);
+  color: var(--on-main);
+  --focus: var(--accent);
+  border: 1px solid var(--on-main-soft);
+  border-radius: 16px;
+  padding: 8px 18px;
   font-size: 14px;
   box-shadow: var(--shadow-lg);
   z-index: 300;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
 }
 
 .toast.active {
   opacity: 1;
   transform: translate(-50%, 0);
   pointer-events: auto;
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
 }
 
 .toast-action {
-  background: none;
-  border: none;
-  color: var(--primary);
+  min-height: 44px;
+  padding: 0 16px;
+  margin-inline-end: -10px;
+  background-color: var(--on-main-soft);
+  border: 1.5px solid var(--on-main-line);
+  border-radius: 999px;
+  color: var(--on-main);
   font-family: var(--font);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
-}
-
-.toast-action::before {
-  content: '·';
-  display: inline-block;
-  color: var(--text-muted);
-  margin-inline-end: 10px;
-}
-
-.toast-action:hover {
-  text-decoration: underline;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.2s ease-out;
 }
 
 /* ══════════════ RESPONSIVE ══════════════ */
@@ -1147,11 +1477,15 @@ kbd {
 /* Tablet / iPad */
 @media (max-width: 768px) {
   .main {
-    padding: 18px;
+    padding: 8px 18px 32px;
   }
 
   .header {
-    padding: 12px 16px;
+    padding: 10px 16px;
+  }
+
+  .hero {
+    padding: 6px 18px 18px;
   }
 
   .app-title {
@@ -1171,44 +1505,56 @@ kbd {
 @media (max-width: 480px) {
   .header {
     justify-content: center;
-    padding: 12px;
+    padding: 6px;
+    gap: 2px 0;
   }
 
   /* Title on its own row (flex-basis, since flex: 1 overrides width) */
   .header-center {
     order: -1;
     flex-basis: 100%;
-    margin-bottom: 4px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Language switch in the title row's end corner, so the icon row fits */
   .lang-btn {
     position: absolute;
-    top: 10px;
-    inset-inline-end: 12px;
+    top: 6px;
+    inset-inline-end: 8px;
     margin: 0;
-    padding: 4px 10px;
+    padding: 0 12px;
     font-size: 13px;
   }
 
+  /* Seven 44px buttons fit a 320px screen with no gaps */
   .header-left,
   .header-right {
-    gap: 2px;
+    gap: 0;
   }
 
-  .icon-btn {
-    padding: 7px;
+  .hero {
+    padding: 4px 14px 14px;
+    margin-bottom: 40px;
+  }
+
+  .stats {
+    padding: 12px 14px 14px;
   }
 
   .main {
-    padding: 14px;
+    padding: 4px 14px 28px;
   }
 
+  /* The checkbox sits in the top end corner, so cards stay short */
   .task-row {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
     padding: 14px;
+    padding-inline-end: 56px;
   }
 
   .task-info {
@@ -1222,14 +1568,14 @@ kbd {
   }
 
   .task-checkbox {
-    align-self: flex-end;
-    width: 22px;
-    height: 22px;
+    position: absolute;
+    top: 14px;
+    inset-inline-end: 14px;
   }
 
   .modal {
     padding: 20px;
-    border-radius: 14px;
+    border-radius: 18px;
   }
 
   .modal-footer {
@@ -1242,8 +1588,6 @@ kbd {
   }
 
   .chip {
-    min-height: 44px;
-    padding: 8px 14px;
     flex: 1 1 auto;
   }
 
@@ -1252,7 +1596,7 @@ kbd {
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Calendar as a sheet along the bottom of the screen */
+  /* Calendar as a sheet sliding up from the bottom of the screen */
   .calendar {
     position: fixed;
     top: auto;
@@ -1260,15 +1604,12 @@ kbd {
     bottom: 0;
     width: auto;
     padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
-    border-radius: 16px 16px 0 0;
-  }
-
-  .cal-day {
-    height: 44px;
+    border-radius: 20px 20px 0 0;
   }
 
   .btn-primary,
-  .btn-secondary {
+  .btn-secondary,
+  .btn-main {
     width: 100%;
     text-align: center;
   }
@@ -1278,11 +1619,25 @@ kbd {
   }
 
   /* Status chips on one row, label and priority dropdowns below */
-  .filter-btn {
-    padding: 7px 13px;
+  .status-filter {
+    display: flex;
+    flex: 1 1 100%;
+  }
+
+  .status-filter .seg-btn {
+    flex: 1 1 auto;
+    padding: 0 6px;
+    font-size: 13px;
   }
 
   .filter-bar .toolbar-select {
     flex: 1 1 130px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
