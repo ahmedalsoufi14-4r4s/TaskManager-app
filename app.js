@@ -1442,6 +1442,11 @@ modalOverlay.addEventListener('keydown', (e) => {
 
 // ─── MOTION ──────────────────────────────────────────
 
+// The moving background rests while the tab is hidden
+document.addEventListener('visibilitychange', () => {
+  document.documentElement.classList.toggle('paused', document.hidden);
+});
+
 // The sticky header gets its shadow once the page scrolls under it
 const headerEl = document.querySelector('.header');
 window.addEventListener('scroll', () => {

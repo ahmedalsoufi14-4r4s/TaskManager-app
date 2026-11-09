@@ -12,7 +12,7 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - Filter by All / Active / Overdue / Completed
 - Real-time search
 - Reminder notification 15 minutes before a deadline
-- Dark / light / system theme
+- Dark / light / system theme in purple and yellow, with a softly moving background
 - Export a readable .txt report
 - Backup and restore tasks as JSON
 - Data persists locally via localStorage

@@ -25,6 +25,15 @@
   </head>
   <body>
 
+    <!-- MOVING BACKGROUND (decorative) -->
+    <div class="backdrop live" aria-hidden="true">
+      <span class="blob blob-main blob-1"></span>
+      <span class="blob blob-accent blob-2"></span>
+      <span class="blob blob-main blob-3"></span>
+      <span class="blob blob-accent blob-4"></span>
+      <span class="blob blob-main blob-5"></span>
+    </div>
+
     <!-- HEADER -->
     <header class="header">
       <div class="header-left">
@@ -60,8 +69,13 @@
       </div>
     </header>
 
-    <!-- TOP BAND: today's progress -->
+    <!-- TOP BAND: today's progress over drifting glows, with waves below -->
     <div class="hero">
+      <div class="hero-art live" aria-hidden="true">
+        <span class="glow glow-1"></span>
+        <span class="glow glow-2"></span>
+        <span class="glow glow-3"></span>
+      </div>
       <div class="stats">
         <div class="stats-row">
           <span class="stats-icon" aria-hidden="true"><i data-lucide="target"></i></span>
@@ -70,6 +84,17 @@
         </div>
         <div class="progress" id="progress" role="progressbar" data-i18n-aria-label="stats.label" aria-valuemin="0" aria-valuemax="100">
           <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </div>
+      <div class="waves live" aria-hidden="true">
+        <div class="wave wave-back">
+          <svg viewBox="0 0 2400 56" preserveAspectRatio="none"><path d="M0 0V34Q300 56 600 34T1200 34T1800 34T2400 34V0Z" /></svg>
+        </div>
+        <div class="wave wave-mid">
+          <svg viewBox="0 0 2400 56" preserveAspectRatio="none"><path d="M0 0V26Q300 8 600 26T1200 26T1800 26T2400 26V0Z" /></svg>
+        </div>
+        <div class="wave wave-front">
+          <svg viewBox="0 0 2400 56" preserveAspectRatio="none"><path d="M0 0V16Q300 32 600 16T1200 16T1800 16T2400 16V0Z" /></svg>
         </div>
       </div>
     </div>
