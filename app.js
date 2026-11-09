@@ -239,6 +239,43 @@ const LABEL_ICONS = {
   health:     'heart-pulse',
 };
 
+// ─── SLIDING INDICATORS ──────────────────────────────
+
+// Segmented controls (status filter, sort, AM/PM) have a pill that slides
+// to the active item. Its offset is measured from the start side, so it
+// slides the mirrored way in Arabic.
+const segmentedGroups = document.querySelectorAll('.segmented');
+
+function moveIndicator(group) {
+  const active = group.querySelector('.active, [aria-pressed="true"]');
+  if (!active || !group.clientWidth) return;
+  const start = document.documentElement.dir === 'rtl'
+    ? group.clientWidth - active.offsetLeft - active.offsetWidth
+    : active.offsetLeft;
+  // The first placement jumps there; later ones slide
+  const first = !group.style.getPropertyValue('--seg-width');
+  if (first) group.classList.add('seg-instant');
+  group.style.setProperty('--seg-start', `${start}px`);
+  group.style.setProperty('--seg-width', `${active.offsetWidth}px`);
+  if (first) {
+    group.getBoundingClientRect();
+    group.classList.remove('seg-instant');
+  }
+}
+
+function updateIndicators() {
+  segmentedGroups.forEach(moveIndicator);
+}
+
+// Sizes change when a bar opens, the language changes or fonts load
+const indicatorObserver = new ResizeObserver(entries => {
+  new Set(entries.map(entry => entry.target.closest('.segmented'))).forEach(moveIndicator);
+});
+segmentedGroups.forEach(group => {
+  indicatorObserver.observe(group);
+  group.querySelectorAll('.seg-btn').forEach(btn => indicatorObserver.observe(btn));
+});
+
 // ─── MODAL ───────────────────────────────────────────
 
 const modalOverlay      = document.getElementById('modal-overlay');
@@ -399,6 +436,7 @@ function updateDeadlineSummary() {
   const period = timeResult ? timeResult.period : timePeriod;
 
   ampmButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.period === period)));
+  moveIndicator(ampmButtons[0].parentElement);
   document.querySelectorAll('[data-quick-date]').forEach(chip => {
     chip.setAttribute('aria-pressed', String(quickDate(chip.dataset.quickDate) === date));
   });
@@ -961,6 +999,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    moveIndicator(btn.parentElement);
     currentFilter = btn.dataset.filter;
     applyFilterAndSearch();
   });
@@ -1048,6 +1087,7 @@ sortButtons.forEach(btn => {
     currentSort = btn.dataset.sort;
     localStorage.setItem('sort', currentSort);
     showSort();
+    moveIndicator(btn.parentElement);
     applyFilterAndSearch();
   });
 });
@@ -1343,6 +1383,8 @@ function applyLanguage() {
 
   renderToast();
   applyFilterAndSearch();
+  // Item widths and the start side change with the language
+  updateIndicators();
 }
 
 function setLanguage(lang, save = true) {
