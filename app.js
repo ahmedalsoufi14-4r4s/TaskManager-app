@@ -40,6 +40,18 @@ const GROUP_ICONS = { overdue: 'alarm-clock', today: 'sun', upcoming: 'calendar-
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+// Tasks already shown once. Only first load and new tasks animate in, so
+// redrawing the list (30 s refresh, selection, filters, sort, language)
+// never replays the entrance.
+const seenIds = new Set();
+let firstRender = true;
+// Checkbox that was just ticked (it pops once) and the last group counts
+// (a badge pops when its count changes)
+let poppedId = null;
+let lastCounts = {};
+
 function isLocked(task) {
   return new Date(task.datetime) <= new Date();
 }
@@ -90,14 +102,16 @@ function escapeHTML(str) {
 
 function renderTasks(filtered = tasks) {
   taskListEl.innerHTML = '';
+  const counts = {};
+  // Stagger position; on first load the header and band come first
+  let order = firstRender ? 3 : 0;
 
   if (filtered.length === 0) {
     emptyStateEl.querySelector('p').textContent = t(tasks.length ? 'empty.filtered' : 'empty.none');
     emptyStateEl.style.display = 'block';
-    return;
+  } else {
+    emptyStateEl.style.display = 'none';
   }
-
-  emptyStateEl.style.display = 'none';
 
   // One header per group, only for groups that have tasks. The icon comes
   // last in the markup (CSS shows it first), so the title stays firstChild.
@@ -106,19 +120,40 @@ function renderTasks(filtered = tasks) {
       .filter(task => getGroup(task) === group)
       .sort(compareTasks);
     if (groupTasks.length === 0) return;
+    counts[group] = groupTasks.length;
+    const pop = lastCounts[group] !== undefined && lastCounts[group] !== groupTasks.length;
 
     const header = document.createElement('h2');
     header.className = `group-header group-${group}`;
-    header.innerHTML = `${t(`group.${group}`)} <span class="group-count">${formatDigits(groupTasks.length)}</span>`
+    header.dataset.group = group;
+    header.innerHTML = `${t(`group.${group}`)} <span class="group-count${pop ? ' pop' : ''}">${formatDigits(groupTasks.length)}</span>`
       + `<i data-lucide="${GROUP_ICONS[group]}" aria-hidden="true"></i>`;
+    if (firstRender) enter(header, order++);
     taskListEl.appendChild(header);
 
-    groupTasks.forEach(task => taskListEl.appendChild(renderTaskRow(task)));
+    groupTasks.forEach(task => {
+      const row = renderTaskRow(task);
+      if (!seenIds.has(task.id)) enter(row, order++);
+      taskListEl.appendChild(row);
+    });
   });
 
-  // Only the list's icons: Lucide redraws every icon it finds
+  // Only the list's icons: redrawing the header's would restart their hover motion
   lucide.createIcons({ root: taskListEl });
+  tasks.forEach(task => seenIds.add(task.id));
+  firstRender = false;
+  poppedId = null;
+  lastCounts = counts;
 }
+
+function enter(el, order) {
+  el.classList.add('enter');
+  el.style.setProperty('--i', Math.min(order, 12));
+}
+
+taskListEl.addEventListener('animationend', (e) => {
+  if (e.animationName === 'rise-in') e.target.classList.remove('enter');
+});
 
 function renderTaskRow(task) {
   const row = document.createElement('div');
@@ -144,7 +179,7 @@ function renderTaskRow(task) {
       </span>
       <span class="task-priority priority-${task.priority}" role="img" title="${priorityTitle}" aria-label="${priorityTitle}"><span></span><span></span><span></span></span>
     </div>
-    <input type="checkbox" class="task-checkbox" aria-label="${escapeHTML(t('task.markDone', { name: task.name }))}"
+    <input type="checkbox" class="task-checkbox${task.id === poppedId ? ' pop' : ''}" aria-label="${escapeHTML(t('task.markDone', { name: task.name }))}"
       ${task.completed ? 'checked' : ''} ${locked ? `disabled title="${t('task.locked')}"` : ''} />
   `;
 
@@ -731,6 +766,7 @@ function openModal(task = null) {
     customLabelGroup.style.display = 'none';
   }
 
+  modalOverlay.classList.remove('leaving');
   modalOverlay.classList.add('active');
   inputName.focus();
 }
@@ -738,10 +774,21 @@ function openModal(task = null) {
 function closeModal() {
   closeCalendar(false);
   modalOverlay.classList.remove('active');
+  playLeave(modalOverlay);
   editingId = null;
   restoreFocus(modalOpener, btnAdd);
 }
 
+// The dialog and side menu fade out with a 'leaving' class, which lets
+// clicks through and goes when the animation ends (on animation time, not
+// a timer). Reduced motion closes them at once.
+function playLeave(overlay) {
+  if (!reducedMotion.matches) overlay.classList.add('leaving');
+}
+
+function endLeave(e) {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('leaving');
+}
 
 inputLabel.addEventListener('change', () => {
   customLabelGroup.style.display =
@@ -801,6 +848,7 @@ document.getElementById('btn-cancel').addEventListener('click', closeModal);
 modalOverlay.addEventListener('click', (e) => {
   if (e.target === modalOverlay) closeModal();
 });
+modalOverlay.addEventListener('animationend', endLeave);
 
 document.getElementById('btn-save').addEventListener('click', () => {
   const name = inputName.value.trim();
@@ -885,6 +933,7 @@ taskListEl.addEventListener('change', (e) => {
   if (!e.target.classList.contains('task-checkbox')) return;
   const id = e.target.closest('.task-row').dataset.id;
   const isChecked = e.target.checked;
+  poppedId = isChecked ? id : null;
   tasks = tasks.map(t => t.id === id ? { ...t, completed: isChecked } : t);
   saveTasks();
   applyFilterAndSearch();
@@ -923,10 +972,15 @@ btnDelete.addEventListener('click', () => {
   const removed = tasks
     .map((task, index) => ({ task, index }))
     .filter(({ task }) => selectedIds.has(task.id));
+  const before = listPositions();
+  fadeOutRows(selectedIds);
   tasks = tasks.filter(t => !selectedIds.has(t.id));
   selectedIds.clear();
   saveTasks();
   applyFilterAndSearch();
+  slideIntoPlace(before);
+  // Forgotten, so Undo brings them back with the entrance animation
+  removed.forEach(({ task }) => seenIds.delete(task.id));
 
   const count = removed.length;
   showToast(() => t('toast.deleted', { count }), 'toast.undo', () => {
@@ -936,6 +990,72 @@ btnDelete.addEventListener('click', () => {
     applyFilterAndSearch();
   });
 });
+
+// Deleted rows fade and shrink while the rest slide up into place. The
+// fading copies sit in a closed shadow root, so they never count as rows.
+const mainEl = document.querySelector('.main');
+let ghostRoot = null;
+
+function ghostLayer() {
+  if (!ghostRoot) {
+    const host = document.createElement('div');
+    host.className = 'ghost-layer';
+    host.setAttribute('aria-hidden', 'true');
+    ghostRoot = host.attachShadow({ mode: 'closed' });
+    // The page's own rules, copied once, so the copies look the same
+    const sheet = new CSSStyleSheet();
+    const pageSheet = [...document.styleSheets].find(s => s.href && s.href.endsWith('style.css'));
+    sheet.replaceSync([...pageSheet.cssRules].map(rule => rule.cssText).join('\n'));
+    ghostRoot.adoptedStyleSheets = [sheet];
+    mainEl.appendChild(host);
+  }
+  return ghostRoot;
+}
+
+function fadeOutRows(ids) {
+  if (reducedMotion.matches) return;
+  const base = mainEl.getBoundingClientRect();
+  taskListEl.querySelectorAll('.task-row').forEach(row => {
+    if (!ids.has(row.dataset.id)) return;
+    const box = row.getBoundingClientRect();
+    const ghost = row.cloneNode(true);
+    ghost.classList.remove('enter');
+    Object.assign(ghost.style, {
+      position: 'absolute', margin: '0',
+      top: `${box.top - base.top}px`, left: `${box.left - base.left}px`,
+      width: `${box.width}px`, height: `${box.height}px`,
+    });
+    ghostLayer().appendChild(ghost);
+    const fade = ghost.animate(
+      [{ opacity: 1 }, { opacity: 0, transform: 'scale(0.94)' }],
+      { duration: 260, easing: 'ease-in', id: 'row-out' },
+    );
+    fade.onfinish = () => ghost.remove();
+  });
+}
+
+// Where each row and group header is, so they can slide from there
+function listPositions() {
+  const tops = new Map();
+  taskListEl.querySelectorAll('[data-id], [data-group]').forEach(el => {
+    tops.set(el.dataset.id ?? `group:${el.dataset.group}`, el.getBoundingClientRect().top);
+  });
+  return tops;
+}
+
+function slideIntoPlace(before) {
+  if (reducedMotion.matches) return;
+  taskListEl.querySelectorAll('[data-id], [data-group]').forEach(el => {
+    const top = before.get(el.dataset.id ?? `group:${el.dataset.group}`);
+    if (top === undefined) return;
+    const shift = top - el.getBoundingClientRect().top;
+    if (Math.abs(shift) < 1) return;
+    el.animate(
+      [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
+      { duration: 300, easing: 'ease-out' },
+    );
+  });
+}
 
 document.getElementById('btn-reload').addEventListener('click', () => {
   loadTasks();
@@ -1100,6 +1220,7 @@ const statsText    = document.getElementById('stats-text');
 const statsPercent = document.getElementById('stats-percent');
 const progressEl   = document.getElementById('progress');
 const progressBar  = document.getElementById('progress-bar');
+let lastStats = null;
 
 // Progress for tasks due today, counted over all tasks (not the filtered list)
 function renderStats() {
@@ -1110,6 +1231,15 @@ function renderStats() {
   statsText.textContent = dueToday.length
     ? t('stats.done', { done, total: dueToday.length })
     : t('stats.none');
+  // The line rolls in when the numbers change (not on a language switch),
+  // and CSS counts the percentage to its new value
+  const numbers = `${done}/${dueToday.length}`;
+  if (lastStats !== null && numbers !== lastStats) {
+    statsText.classList.remove('roll');
+    void statsText.offsetWidth;
+    statsText.classList.add('roll');
+  }
+  lastStats = numbers;
   statsPercent.style.setProperty('--pct', percent);
   statsPercent.classList.toggle('empty', !dueToday.length);
   progressBar.style.width = `${percent}%`;
@@ -1139,12 +1269,14 @@ const btnCloseAside = document.getElementById('btn-close-aside');
 
 // Focus moves into the menu when it opens and back to its button on close
 function openAside() {
+  asideOverlay.classList.remove('leaving');
   asideOverlay.classList.add('active');
   btnCloseAside.focus();
 }
 
 function closeAside() {
   asideOverlay.classList.remove('active');
+  playLeave(asideOverlay);
   btnMenu.focus();
 }
 
@@ -1154,6 +1286,7 @@ btnCloseAside.addEventListener('click', closeAside);
 asideOverlay.addEventListener('click', (e) => {
   if (e.target === asideOverlay) closeAside();
 });
+asideOverlay.addEventListener('animationend', endLeave);
 
 // Theme
 // The colours live in style.css; a theme only sets data-theme on <html>.
