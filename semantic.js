@@ -4,9 +4,10 @@
 // tasks whose vector points the same way as the search count as matches
 // even when no words are shared. It all runs on this device and the task
 // vectors stay in IndexedDB. Nothing is downloaded until the user turns it
-// on and agrees, and nothing loads until the search bar is opened.
-// Uses tasks, BUILT_IN_LABELS, showToast, applyFilterAndSearch, playLeave,
-// endLeave and restoreFocus from app.js.
+// on and agrees, and nothing loads until the search bar is opened. This
+// file itself is loaded by app.js (loadSmart) when it may be needed.
+// Uses tasks, BUILT_IN_LABELS, searchBar, smartOverlay, showToast,
+// applyFilterAndSearch, playLeave, endLeave and restoreFocus from app.js.
 
 const SMART_MODEL = {
   id: 'Xenova/multilingual-e5-small',
@@ -74,7 +75,6 @@ const smartStatus      = document.getElementById('smart-status');
 const smartStatusText  = document.getElementById('smart-status-text');
 const smartProgress    = document.getElementById('smart-progress');
 const smartProgressBar = document.getElementById('smart-progress-bar');
-const smartOverlay     = document.getElementById('smart-overlay');
 
 // off, asking (checking files or showing the prompt), loading (from the
 // cache), downloading or ready
@@ -503,3 +503,11 @@ smartOverlay.addEventListener('click', (e) => {
   if (e.target === smartOverlay) closeSmartDialog();
 });
 smartOverlay.addEventListener('animationend', (e) => endLeave(e));
+
+// Loaded after the page, so catch up: draw the controls, and start if the
+// search bar is already open
+renderSmart();
+if (searchBar.classList.contains('active')) {
+  smartSearchOpened();
+  applyFilterAndSearch();
+}

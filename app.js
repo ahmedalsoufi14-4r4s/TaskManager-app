@@ -13,8 +13,9 @@ function loadTasks() {
 
 function saveTasks() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
-  // Keeps smart search's stored task vectors in step (semantic.js)
-  smartTasksChanged();
+  // Keeps smart search's stored task vectors in step (semantic.js). The
+  // smart* calls do nothing until that file has loaded.
+  window.smartTasksChanged?.();
 }
 
 // Random UUID, with a fallback where crypto.randomUUID is missing (old
@@ -117,7 +118,7 @@ function renderTasks(filtered = tasks, related = []) {
   if (filtered.length === 0 && related.length === 0) {
     emptyStateEl.querySelector('p').textContent = t(tasks.length ? 'empty.filtered' : 'empty.none');
     // Smart search may still find some by meaning
-    emptyStateEl.style.display = smartWaiting() ? 'none' : 'block';
+    emptyStateEl.style.display = window.smartWaiting?.() ? 'none' : 'block';
   } else {
     emptyStateEl.style.display = 'none';
   }
@@ -1085,7 +1086,7 @@ function slideIntoPlace(before) {
 
 document.getElementById('btn-reload').addEventListener('click', () => {
   loadTasks();
-  smartTasksChanged();
+  window.smartTasksChanged?.();
   updateOverdueTasks();
   applyFilterAndSearch();
 });
@@ -1134,7 +1135,8 @@ btnSearch.addEventListener('click', () => {
   } else {
     searchBar.classList.add('active');
     searchInput.focus();
-    smartSearchOpened();
+    loadSmart();
+    window.smartSearchOpened?.();
   }
 });
 
@@ -1231,11 +1233,11 @@ function applyFilterAndSearch() {
   if (query) {
     const matchIds = new Set(tasks.filter(t => normalizeSearchText(t.name).includes(query)).map(t => t.id));
     const shownIds = new Set(filtered.map(t => t.id));
-    related = smartMatches(searchInput.value, tasks.filter(t => !matchIds.has(t.id)))
+    related = (window.smartMatches?.(searchInput.value, tasks.filter(t => !matchIds.has(t.id))) || [])
       .filter(t => shownIds.has(t.id));
     filtered = filtered.filter(t => matchIds.has(t.id));
   } else {
-    smartMatches('', []);
+    window.smartMatches?.('', []);
   }
 
   // Tasks hidden by a filter or search (or deleted) leave the
@@ -1324,6 +1326,7 @@ const btnCloseAside = document.getElementById('btn-close-aside');
 
 // Focus moves into the menu when it opens and back to its button on close
 function openAside() {
+  loadSmart();
   asideOverlay.classList.remove('leaving');
   asideOverlay.classList.add('active');
   btnCloseAside.focus();
@@ -1570,7 +1573,7 @@ function applyLanguage() {
   }
 
   renderToast();
-  renderSmart();
+  window.renderSmart?.();
   applyFilterAndSearch();
   // Item widths and the start side change with the language
   updateIndicators();
@@ -1596,6 +1599,20 @@ window.addEventListener('storage', (e) => {
 // True while focus is in a field, so letter shortcuts don't fire
 function isTypingTarget(el) {
   return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
+
+// The smart search prompt (semantic.js) also takes Esc and blocks N
+const smartOverlay = document.getElementById('smart-overlay');
+
+// Adds semantic.js the first time smart search may be needed. Once loaded
+// it catches up with the page by itself.
+let smartRequested = false;
+function loadSmart() {
+  if (smartRequested) return;
+  smartRequested = true;
+  const script = document.createElement('script');
+  script.src = 'semantic.js';
+  document.body.append(script);
 }
 
 document.addEventListener('keydown', (e) => {
@@ -1666,6 +1683,11 @@ function init() {
     navigator.serviceWorker.register('sw.js')
       .catch(err => console.warn('Service worker not registered', err));
   }
+
+  // Smart search is optional, so its code never holds up the first render:
+  // it loads after the page if it was used before, otherwise when the
+  // search bar or side menu first opens
+  if (localStorage.getItem('smartSearch') !== null) window.addEventListener('load', loadSmart, { once: true });
 }
 
 init();
