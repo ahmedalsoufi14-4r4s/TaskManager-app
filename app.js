@@ -1071,6 +1071,23 @@ const btnSearch   = document.getElementById('btn-search');
 const btnClearSearch = document.getElementById('btn-clear-search');
 let currentFilter = 'all';
 
+// Search ignores case, extra spaces, Arabic short vowels (tashkeel),
+// tatweel and invisible direction marks, treats أ إ آ ٱ as ا, ة as ه and
+// ى as ي, and reads Arabic-Indic digits as 0-9. Task names and the search
+// text go through the same steps.
+const ARABIC_MARKS = /[ؐ-ًؚ-ٰٟۖ-ۜ۟-۪ۨ-ۭـ​-‏؜]/g;
+
+function normalizeSearchText(text) {
+  return normalizeDigits(text.normalize('NFKC'))
+    .toLowerCase()
+    .replace(ARABIC_MARKS, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // The clear button only shows while there is text to clear
 function updateClearButton() {
   btnClearSearch.hidden = !searchInput.value;
@@ -1153,7 +1170,7 @@ function updateLabelOptions() {
 }
 
 function applyFilterAndSearch() {
-  const query = searchInput.value.trim().toLowerCase();
+  const query = normalizeSearchText(searchInput.value);
 
   updateLabelOptions();
   const label = filterLabel.value;
@@ -1180,7 +1197,7 @@ function applyFilterAndSearch() {
   }
 
   if (query) {
-    filtered = filtered.filter(t => t.name.toLowerCase().includes(query));
+    filtered = filtered.filter(t => normalizeSearchText(t.name).includes(query));
   }
 
   // Tasks hidden by a filter or search (or deleted) leave the
