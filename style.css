@@ -1660,6 +1660,281 @@ html[lang="ar"] .aside-section-title {
   color: var(--muted);
 }
 
+/* ── Smart search ──
+   Toggle in the search bar: outlined when off, main colour when on. Its
+   sparkle turns on hover and twinkles while the model loads. */
+.smart-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--main-tint);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out,
+              transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+/* Widens the tap target to 44px around the smaller pill */
+.smart-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -5px -4px;
+}
+
+.smart-toggle svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease-out;
+}
+
+.smart-toggle:hover {
+  border-color: var(--main-tint);
+  background-color: var(--main-soft);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.smart-toggle:hover svg {
+  transform: rotate(calc(18deg * var(--dir))) scale(1.15);
+}
+
+.smart-toggle:active {
+  transform: scale(0.96);
+  box-shadow: none;
+  transition-duration: 0.1s;
+}
+
+/* On: filled like the switch in the menu (main tint, so the fill also
+   stands out on dark surfaces) */
+.smart-toggle[aria-pressed="true"] {
+  background-color: var(--main-tint);
+  border-color: var(--main-tint);
+  color: var(--surface);
+}
+
+.smart-toggle.busy svg {
+  animation: twinkle 1.2s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  50% { transform: scale(0.75) rotate(calc(24deg * var(--dir))); opacity: 0.55; }
+}
+
+/* Download progress under the search bar. Not clickable: it lifts a
+   little on hover and its arrow nudges down. */
+.smart-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--main-tint);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  animation: drop-in 0.25s ease-out;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.smart-status:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.smart-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--main-soft);
+  color: var(--main-tint);
+}
+
+.smart-status-icon svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease-out;
+}
+
+.smart-status:hover .smart-status-icon svg {
+  transform: translateY(2px);
+}
+
+.smart-status-body {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.smart-status-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The fill grows from the start side, so it mirrors in Arabic */
+.smart-progress {
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--main-soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.smart-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--main-tint);
+  transition: width 0.3s ease-out;
+}
+
+.smart-cancel {
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+/* A small sparkle on tasks found by meaning */
+.task-related {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--main-soft);
+  color: var(--main-tint);
+}
+
+.task-related svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.3s ease-out;
+}
+
+.task-row:hover .task-related svg {
+  transform: rotate(calc(20deg * var(--dir))) scale(1.15);
+}
+
+/* Meaning matches fade in when they are first found, not on redraws */
+.fade-in {
+  animation: fade-rise 0.3s ease-out backwards;
+}
+
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+/* Prompt before the download, above the side menu it can open from */
+.smart-overlay {
+  z-index: 250;
+}
+
+.smart-dialog {
+  max-width: 440px;
+}
+
+.smart-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.smart-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--main-soft);
+  border: 1.5px solid var(--main-tint);
+  color: var(--main-tint);
+}
+
+.smart-badge svg {
+  transition: transform 0.4s ease-out;
+}
+
+.smart-body:hover .smart-badge svg {
+  transform: rotate(calc(20deg * var(--dir))) scale(1.15);
+}
+
+.smart-intro {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* What the download means, as info rows that lift a little on hover */
+.smart-facts {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.smart-facts li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background-color: var(--main-soft);
+  color: var(--text);
+  font-size: 14px;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.smart-facts li:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.smart-facts svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--main-tint);
+  transition: transform 0.3s ease-out;
+}
+
+.smart-facts li:hover svg {
+  transform: rotate(calc(-10deg * var(--dir))) scale(1.15);
+}
+
+/* Text for screen readers only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* ── Filter bar ── */
 .filter-bar {
   display: none;
@@ -1894,6 +2169,20 @@ html[lang="ar"] .aside-section-title {
 .pref-label {
   font-size: 15px;
   color: var(--text);
+}
+
+/* A label with a short line under it (smart search state) */
+.pref-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pref-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 .pref-row select {
@@ -2245,6 +2534,15 @@ kbd {
 
   .filter-bar .toolbar-select {
     flex: 1 1 130px;
+  }
+
+  /* Smart search toggle shows only its sparkle; the name stays as its label */
+  .smart-toggle {
+    padding: 0;
+  }
+
+  .smart-toggle-text {
+    display: none;
   }
 }
 

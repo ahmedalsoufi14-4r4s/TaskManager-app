@@ -11,6 +11,7 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - Overdue state for missed deadlines, kept separate from completed tasks
 - Filter by All / Active / Overdue / Completed
 - Real-time search
+- Optional smart search by meaning in English and Arabic that runs on the device (Transformers.js), with no task data leaving the browser
 - Reminder notification 15 minutes before a deadline
 - Dark / light / system theme in purple and yellow, with a softly moving background
 - Export a readable .txt report

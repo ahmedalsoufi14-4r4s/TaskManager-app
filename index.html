@@ -109,9 +109,26 @@
         <button class="icon-btn" id="btn-clear-search" data-i18n-title="search.clear" data-i18n-aria-label="search.clear" hidden>
           <i data-lucide="circle-x"></i>
         </button>
+        <!-- Smart search: also finds tasks by meaning (semantic.js) -->
+        <button type="button" class="smart-toggle" id="btn-smart" aria-pressed="false" data-i18n-title="smart.toggle" data-i18n-aria-label="smart.toggle">
+          <i data-lucide="sparkles"></i>
+          <span class="smart-toggle-text" data-i18n="smart.short"></span>
+        </button>
         <button class="icon-btn" id="btn-close-search" data-i18n-title="search.close" data-i18n-aria-label="search.close">
           <i data-lucide="x"></i>
         </button>
+      </div>
+
+      <!-- SMART SEARCH DOWNLOAD: progress of the one-time download -->
+      <div class="smart-status" id="smart-status" hidden>
+        <span class="smart-status-icon" aria-hidden="true"><i data-lucide="download"></i></span>
+        <div class="smart-status-body">
+          <p class="smart-status-text" id="smart-status-text"></p>
+          <div class="smart-progress" id="smart-progress" role="progressbar" data-i18n-aria-label="smart.progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="smart-progress-bar" id="smart-progress-bar"></div>
+          </div>
+        </div>
+        <button type="button" class="btn-secondary smart-cancel" id="btn-smart-cancel" data-i18n="smart.cancel"></button>
       </div>
 
       <!-- FILTER BAR -->
@@ -281,6 +298,36 @@
       </div>
     </div>
 
+    <!-- SMART SEARCH PROMPT: asks before the one-time download -->
+    <div class="modal-overlay smart-overlay" id="smart-overlay">
+      <div class="modal smart-dialog" role="dialog" aria-modal="true" aria-labelledby="smart-title" aria-describedby="smart-intro">
+
+        <div class="modal-header">
+          <h2 class="modal-title" id="smart-title" data-i18n="smart.title"></h2>
+          <button class="icon-btn" id="btn-close-smart" data-i18n-title="modal.close" data-i18n-aria-label="modal.close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="smart-body">
+          <span class="smart-badge" aria-hidden="true"><i data-lucide="sparkles"></i></span>
+          <p class="smart-intro" id="smart-intro" data-i18n="smart.intro"></p>
+        </div>
+
+        <ul class="smart-facts">
+          <li><i data-lucide="download" aria-hidden="true"></i><span id="smart-size"></span></li>
+          <li><i data-lucide="wifi-off" aria-hidden="true"></i><span data-i18n="smart.offlineAfter"></span></li>
+          <li><i data-lucide="shield-check" aria-hidden="true"></i><span data-i18n="smart.private"></span></li>
+        </ul>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" id="btn-smart-no" data-i18n="smart.notNow"></button>
+          <button class="btn-main" id="btn-smart-yes"></button>
+        </div>
+
+      </div>
+    </div>
+
     <!-- ASIDE PANEL -->
     <div class="aside-overlay" id="aside-overlay">
       <div class="aside" id="aside-panel">
@@ -311,6 +358,17 @@
               <option value="dark" data-i18n="theme.dark"></option>
               <option value="light" data-i18n="theme.light"></option>
             </select>
+          </div>
+
+          <div class="pref-row">
+            <div class="pref-text">
+              <label class="pref-label" for="pref-smart" data-i18n="menu.smartSearch"></label>
+              <span class="pref-hint" id="smart-hint"></span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="pref-smart" aria-describedby="smart-hint" />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
 
           <div class="pref-row">
@@ -362,6 +420,7 @@
     </div>
 
     <script src="i18n.js"></script>
+    <script src="semantic.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

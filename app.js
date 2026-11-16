@@ -13,6 +13,8 @@ function loadTasks() {
 
 function saveTasks() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
+  // Keeps smart search's stored task vectors in step (semantic.js)
+  smartTasksChanged();
 }
 
 // Random UUID, with a fallback where crypto.randomUUID is missing (old
@@ -36,7 +38,10 @@ let currentSort = localStorage.getItem('sort') || 'deadline';
 
 // Order the groups appear in the list (titles come from i18n.js)
 const GROUPS = ['overdue', 'today', 'upcoming', 'completed'];
-const GROUP_ICONS = { overdue: 'alarm-clock', today: 'sun', upcoming: 'calendar-days', completed: 'circle-check' };
+const GROUP_ICONS = {
+  overdue: 'alarm-clock', today: 'sun', upcoming: 'calendar-days', completed: 'circle-check',
+  related: 'sparkles',
+};
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 
@@ -51,6 +56,8 @@ let firstRender = true;
 // (a badge pops when its count changes)
 let poppedId = null;
 let lastCounts = {};
+// Tasks shown last time as meaning matches; newly found ones fade in
+let lastRelated = new Set();
 
 function isLocked(task) {
   return new Date(task.datetime) <= new Date();
@@ -100,43 +107,29 @@ function escapeHTML(str) {
     .replace(/'/g, '&#039;');
 }
 
-function renderTasks(filtered = tasks) {
+// related: smart search's meaning matches, shown after the others
+function renderTasks(filtered = tasks, related = []) {
   taskListEl.innerHTML = '';
   const counts = {};
   // Stagger position; on first load the header and band come first
   let order = firstRender ? 3 : 0;
 
-  if (filtered.length === 0) {
+  if (filtered.length === 0 && related.length === 0) {
     emptyStateEl.querySelector('p').textContent = t(tasks.length ? 'empty.filtered' : 'empty.none');
-    emptyStateEl.style.display = 'block';
+    // Smart search may still find some by meaning
+    emptyStateEl.style.display = smartWaiting() ? 'none' : 'block';
   } else {
     emptyStateEl.style.display = 'none';
   }
 
-  // One header per group, only for groups that have tasks. The icon comes
-  // last in the markup (CSS shows it first), so the title stays firstChild.
   GROUPS.forEach(group => {
     const groupTasks = filtered
       .filter(task => getGroup(task) === group)
       .sort(compareTasks);
-    if (groupTasks.length === 0) return;
-    counts[group] = groupTasks.length;
-    const pop = lastCounts[group] !== undefined && lastCounts[group] !== groupTasks.length;
-
-    const header = document.createElement('h2');
-    header.className = `group-header group-${group}`;
-    header.dataset.group = group;
-    header.innerHTML = `${t(`group.${group}`)} <span class="group-count${pop ? ' pop' : ''}">${formatDigits(groupTasks.length)}</span>`
-      + `<i data-lucide="${GROUP_ICONS[group]}" aria-hidden="true"></i>`;
-    if (firstRender) enter(header, order++);
-    taskListEl.appendChild(header);
-
-    groupTasks.forEach(task => {
-      const row = renderTaskRow(task);
-      if (!seenIds.has(task.id)) enter(row, order++);
-      taskListEl.appendChild(row);
-    });
+    order = renderGroup(group, groupTasks, counts, order);
   });
+  // Meaning matches keep their closest-first order
+  renderGroup('related', related, counts, order);
 
   // Only the list's icons: redrawing the header's would restart their hover motion
   lucide.createIcons({ root: taskListEl });
@@ -144,6 +137,33 @@ function renderTasks(filtered = tasks) {
   firstRender = false;
   poppedId = null;
   lastCounts = counts;
+  lastRelated = new Set(related.map(task => task.id));
+}
+
+// One header per group, only for groups that have tasks. The icon comes
+// last in the markup (CSS shows it first), so the title stays firstChild.
+function renderGroup(group, groupTasks, counts, order) {
+  if (groupTasks.length === 0) return order;
+  const related = group === 'related';
+  counts[group] = groupTasks.length;
+  const pop = lastCounts[group] !== undefined && lastCounts[group] !== groupTasks.length;
+
+  const header = document.createElement('h2');
+  header.className = `group-header group-${group}`;
+  header.dataset.group = group;
+  header.innerHTML = `${t(`group.${group}`)} <span class="group-count${pop ? ' pop' : ''}">${formatDigits(groupTasks.length)}</span>`
+    + `<i data-lucide="${GROUP_ICONS[group]}" aria-hidden="true"></i>`;
+  if (firstRender) enter(header, order++);
+  else if (related && lastRelated.size === 0) header.classList.add('fade-in');
+  taskListEl.appendChild(header);
+
+  groupTasks.forEach(task => {
+    const row = renderTaskRow(task, related);
+    if (!seenIds.has(task.id)) enter(row, order++);
+    else if (related && !lastRelated.has(task.id)) row.classList.add('fade-in');
+    taskListEl.appendChild(row);
+  });
+  return order;
 }
 
 function enter(el, order) {
@@ -153,9 +173,10 @@ function enter(el, order) {
 
 taskListEl.addEventListener('animationend', (e) => {
   if (e.animationName === 'rise-in') e.target.classList.remove('enter');
+  if (e.animationName === 'fade-rise') e.target.classList.remove('fade-in');
 });
 
-function renderTaskRow(task) {
+function renderTaskRow(task, related = false) {
   const row = document.createElement('div');
   const locked = isLocked(task);
   const overdue = isOverdue(task);
@@ -168,8 +189,13 @@ function renderTaskRow(task) {
 
   // dir="auto" lets an English or Arabic name read in its own direction
   const priorityTitle = PRIORITY_RANK[task.priority] === undefined ? '' : t(`priorityDot.${task.priority}`);
+  // A small sparkle says why a meaning match is in the results
+  const relatedHint = related
+    ? `<span class="task-related" title="${t('task.related')}"><i data-lucide="sparkles" aria-hidden="true"></i><span class="sr-only">${t('task.related')}</span></span>`
+    : '';
   row.innerHTML = `
     <div class="task-info">
+      ${relatedHint}
       <span class="task-name" dir="auto">${escapeHTML(task.name)}</span>
       <span class="task-date" title="${formatFullDate(task.datetime)}">${formatDate(task.datetime)}</span>
       <span class="task-relative${overdue ? ' task-overdue' : ''}" title="${formatFullDate(task.datetime)}">${formatRelative(task)}</span>
@@ -1059,6 +1085,7 @@ function slideIntoPlace(before) {
 
 document.getElementById('btn-reload').addEventListener('click', () => {
   loadTasks();
+  smartTasksChanged();
   updateOverdueTasks();
   applyFilterAndSearch();
 });
@@ -1107,6 +1134,7 @@ btnSearch.addEventListener('click', () => {
   } else {
     searchBar.classList.add('active');
     searchInput.focus();
+    smartSearchOpened();
   }
 });
 
@@ -1196,16 +1224,26 @@ function applyFilterAndSearch() {
     filtered = filtered.filter(t => t.priority === priority);
   }
 
+  // Word matches first; smart search (if on) adds tasks that match by
+  // meaning. Those are picked from all tasks, so a filter only hides them
+  // and never lets a weaker one in.
+  let related = [];
   if (query) {
-    filtered = filtered.filter(t => normalizeSearchText(t.name).includes(query));
+    const matchIds = new Set(tasks.filter(t => normalizeSearchText(t.name).includes(query)).map(t => t.id));
+    const shownIds = new Set(filtered.map(t => t.id));
+    related = smartMatches(searchInput.value, tasks.filter(t => !matchIds.has(t.id)))
+      .filter(t => shownIds.has(t.id));
+    filtered = filtered.filter(t => matchIds.has(t.id));
+  } else {
+    smartMatches('', []);
   }
 
   // Tasks hidden by a filter or search (or deleted) leave the
   // selection, so Delete never removes a hidden task
-  const visibleIds = new Set(filtered.map(t => t.id));
+  const visibleIds = new Set([...filtered, ...related].map(t => t.id));
   selectedIds = new Set([...selectedIds].filter(id => visibleIds.has(id)));
 
-  renderTasks(filtered);
+  renderTasks(filtered, related);
   renderStats();
   updateActionButtons();
 }
@@ -1532,6 +1570,7 @@ function applyLanguage() {
   }
 
   renderToast();
+  renderSmart();
   applyFilterAndSearch();
   // Item widths and the start side change with the language
   updateIndicators();
@@ -1560,22 +1599,24 @@ function isTypingTarget(el) {
 }
 
 document.addEventListener('keydown', (e) => {
-  // Esc closes whatever is on top: calendar, modal, side menu, then search
+  // Esc closes whatever is on top: calendar, modal, smart search prompt,
+  // side menu, then search
   if (e.key === 'Escape') {
     if (!calendar.hidden) closeCalendar();
     else if (modalOverlay.classList.contains('active')) closeModal();
+    else if (smartOverlay.classList.contains('active')) closeSmartDialog();
     else if (asideOverlay.classList.contains('active')) closeAside();
     else if (searchBar.classList.contains('active')) closeSearch();
     return;
   }
 
   // N opens a new task, but not while typing, with Ctrl/Cmd/Alt held,
-  // or while the modal or side menu is open. e.code is the physical key,
-  // so it also works with an Arabic keyboard layout (where N types ى).
+  // or while the modal, side menu or a prompt is open. e.code is the
+  // physical key, so it also works with an Arabic keyboard layout (where N types ى).
   if (e.code !== 'KeyN') return;
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (isTypingTarget(e.target)) return;
-  if (modalOverlay.classList.contains('active') || asideOverlay.classList.contains('active')) return;
+  if ([modalOverlay, asideOverlay, smartOverlay].some(el => el.classList.contains('active'))) return;
   e.preventDefault();
   openModal();
 });
