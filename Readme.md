@@ -25,6 +25,7 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - Keyboard shortcuts: N for a new task, Enter to save, Esc to close
 - Quick deadline entry: DD/MM/YYYY date with a calendar, 12-hour time with AM/PM, Today / Tomorrow / Next week and time buttons, with a preview and a warning for past times
 - English and Arabic with a one-click switch: full right-to-left layout, Arabic dates and plurals, and a local Arabic font that works offline
+- Built-in guide: a welcome tour that points out every feature on the real page (with optional sample tasks), plus How to use and Help and tips in the menu
 
 ## Tech stack
 

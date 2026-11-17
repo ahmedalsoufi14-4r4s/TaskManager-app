@@ -410,6 +410,68 @@
           </dl>
         </section>
 
+        <!-- HELP: the tour and the Help panel (tour.js) -->
+        <section class="aside-section">
+          <h3 class="aside-section-title" data-i18n="menu.help"></h3>
+          <button type="button" class="menu-row" id="btn-tour">
+            <span class="menu-row-icon" aria-hidden="true"><i data-lucide="route"></i></span>
+            <span class="pref-text">
+              <span class="pref-label" data-i18n="menu.tour"></span>
+              <span class="pref-hint" data-i18n="menu.tourHint"></span>
+            </span>
+            <i class="menu-row-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="menu-row" id="btn-help">
+            <span class="menu-row-icon" aria-hidden="true"><i data-lucide="circle-help"></i></span>
+            <span class="pref-text">
+              <span class="pref-label" data-i18n="menu.helpPanel"></span>
+              <span class="pref-hint" data-i18n="menu.helpPanelHint"></span>
+            </span>
+            <i class="menu-row-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="menu-row" id="btn-install-help">
+            <span class="menu-row-icon" aria-hidden="true"><i data-lucide="smartphone"></i></span>
+            <span class="pref-text">
+              <span class="pref-label" data-i18n="guide.install.title"></span>
+              <span class="pref-hint" data-i18n="menu.installHint"></span>
+            </span>
+            <i class="menu-row-arrow" data-lucide="chevron-right" aria-hidden="true"></i>
+          </button>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- WELCOME: offers the tour on a first visit, or before a tour with no tasks -->
+    <div class="modal-overlay welcome-overlay" id="welcome-overlay">
+      <div class="modal welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-text">
+        <!-- A route to a flag -->
+        <svg class="welcome-art" viewBox="0 0 120 120" aria-hidden="true">
+          <rect class="art-board" x="12" y="24" width="88" height="80" rx="16" />
+          <path class="art-route" d="M30 86c16 0 10-24 28-24s14-22 30-22" />
+          <circle class="art-stop" cx="30" cy="86" r="6" />
+          <circle class="art-stop" cx="58" cy="62" r="5" />
+          <path class="art-pole" d="M88 46V14" />
+          <path class="art-flag" d="M88 14h22l-6 8 6 8H88z" />
+        </svg>
+        <h2 class="modal-title welcome-title" id="welcome-title" data-i18n="welcome.title"></h2>
+        <p class="welcome-text" id="welcome-text" data-i18n="welcome.text"></p>
+
+        <div class="pref-row welcome-samples">
+          <div class="pref-text">
+            <label class="pref-label" for="welcome-samples" data-i18n="welcome.samples"></label>
+            <span class="pref-hint" id="welcome-samples-hint" data-i18n="welcome.samplesHint"></span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="welcome-samples" checked aria-describedby="welcome-samples-hint" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" id="btn-welcome-skip" data-i18n="welcome.skip"></button>
+          <button class="btn-main" id="btn-welcome-start" data-i18n="welcome.start"></button>
+        </div>
       </div>
     </div>
 

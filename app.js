@@ -12,7 +12,8 @@ function loadTasks() {
 }
 
 function saveTasks() {
-  localStorage.setItem('tasks', JSON.stringify(tasks));
+  // Sample tasks shown during the tour (tour.js) are never saved
+  localStorage.setItem('tasks', JSON.stringify(tasks.filter(task => !task.sample)));
   // Keeps smart search's stored task vectors in step (semantic.js). The
   // smart* calls do nothing until that file has loaded.
   window.smartTasksChanged?.();
@@ -194,10 +195,12 @@ function renderTaskRow(task, related = false) {
   const relatedHint = related
     ? `<span class="task-related" title="${t('task.related')}"><i data-lucide="sparkles" aria-hidden="true"></i><span class="sr-only">${t('task.related')}</span></span>`
     : '';
+  const sampleTag = task.sample ? `<span class="task-sample">${t('sample.tag')}</span>` : '';
   row.innerHTML = `
     <div class="task-info">
       ${relatedHint}
       <span class="task-name" dir="auto">${escapeHTML(task.name)}</span>
+      ${sampleTag}
       <span class="task-date" title="${formatFullDate(task.datetime)}">${formatDate(task.datetime)}</span>
       <span class="task-relative${overdue ? ' task-overdue' : ''}" title="${formatFullDate(task.datetime)}">${formatRelative(task)}</span>
       <span class="task-label" dir="auto">
@@ -1414,7 +1417,7 @@ function checkNotifications() {
   const now = Date.now();
   let changed = false;
   tasks.forEach(task => {
-    if (task.completed || notifiedIds.has(task.id)) return;
+    if (task.completed || task.sample || notifiedIds.has(task.id)) return;
     const due = new Date(task.datetime).getTime();
     if (due > now && due - now <= NOTIFY_BEFORE_MS) {
       new Notification(t('notify.title'), {
@@ -1574,6 +1577,7 @@ function applyLanguage() {
 
   renderToast();
   window.renderSmart?.();
+  window.renderGuide?.();
   applyFilterAndSearch();
   // Item widths and the start side change with the language
   updateIndicators();
@@ -1593,6 +1597,123 @@ prefLang.addEventListener('change', () => setLanguage(prefLang.value));
 window.addEventListener('storage', (e) => {
   if (e.key === 'lang' && e.newValue && e.newValue !== currentLang) setLanguage(e.newValue, false);
 });
+
+// ─── GUIDE ───────────────────────────────────────────
+
+// A first visit gets the welcome card, people who already have tasks a
+// one-time offer in a toast. The tour and the Help panel are in tour.js
+// and tour.css, added the first time either is opened. localStorage 'tour'
+// remembers that the tour was offered, skipped or done.
+const welcomeOverlay = document.getElementById('welcome-overlay');
+const welcomeTitle   = document.getElementById('welcome-title');
+const welcomeSamples = document.getElementById('welcome-samples');
+let welcomeOpener = null;
+let welcomeFirst = false;
+const guideFiles = {};
+
+// Each file is added once; one that failed to load is tried again next time
+function loadGuideFile(tag, url) {
+  guideFiles[url] = guideFiles[url] || new Promise((resolve, reject) => {
+    const el = document.createElement(tag);
+    if (tag === 'link') {
+      el.rel = 'stylesheet';
+      el.href = url;
+    } else {
+      el.src = url;
+    }
+    el.onload = resolve;
+    el.onerror = () => {
+      el.remove();
+      delete guideFiles[url];
+      reject();
+    };
+    (tag === 'link' ? document.head : document.body).append(el);
+  });
+  return guideFiles[url];
+}
+
+function loadGuide() {
+  return Promise.all([loadGuideFile('link', 'tour.css'), loadGuideFile('script', 'tour.js')]);
+}
+
+function startTour(options) {
+  loadGuide().then(() => runTour(options), () => showToast(() => t('tour.failed')));
+}
+
+// The tour needs tasks to point at, so with none it starts from the
+// welcome card, which offers sample tasks
+function takeTour(opener) {
+  if (tasks.length) startTour({ opener });
+  else openWelcome(false, opener);
+}
+
+function openHelpPanel(opener, topic) {
+  loadGuide().then(() => openHelp(opener, topic), () => showToast(() => t('tour.failed')));
+}
+
+function openWelcome(first, opener = document.activeElement) {
+  welcomeFirst = first;
+  welcomeOpener = opener;
+  welcomeTitle.dataset.i18n = first ? 'welcome.title' : 'welcome.titleAgain';
+  welcomeTitle.textContent = t(welcomeTitle.dataset.i18n);
+  welcomeSamples.checked = true;
+  welcomeOverlay.classList.remove('leaving');
+  welcomeOverlay.classList.add('active');
+  document.getElementById('btn-welcome-start').focus();
+}
+
+function closeWelcome(returnFocus = true) {
+  if (!welcomeOverlay.classList.contains('active')) return;
+  welcomeOverlay.classList.remove('active');
+  playLeave(welcomeOverlay);
+  if (returnFocus) restoreFocus(welcomeOpener, btnAdd);
+}
+
+// Skipping on a first visit is remembered and says where the tour lives
+function skipWelcome() {
+  if (!welcomeOverlay.classList.contains('active')) return;
+  closeWelcome();
+  if (!welcomeFirst) return;
+  localStorage.setItem('tour', 'skipped');
+  showToast(() => t('tour.later'));
+}
+
+document.getElementById('btn-welcome-start').addEventListener('click', () => {
+  closeWelcome(false);
+  startTour({ opener: welcomeOpener, samples: welcomeSamples.checked });
+});
+document.getElementById('btn-welcome-skip').addEventListener('click', skipWelcome);
+welcomeOverlay.addEventListener('click', (e) => {
+  if (e.target === welcomeOverlay) skipWelcome();
+});
+welcomeOverlay.addEventListener('animationend', endLeave);
+welcomeOverlay.addEventListener('keydown', (e) => trapTab(e, welcomeOverlay));
+
+// Shown once, and not over another message
+function offerTour() {
+  if (toastEl.classList.contains('active') || localStorage.getItem('tour') !== null) return;
+  localStorage.setItem('tour', 'offered');
+  showToast(() => t('tour.offer'), 'welcome.start', () => startTour({ opener: null }));
+}
+
+document.getElementById('btn-tour').addEventListener('click', (e) => takeTour(e.currentTarget));
+document.getElementById('btn-help').addEventListener('click', (e) => openHelpPanel(e.currentTarget));
+document.getElementById('btn-install-help').addEventListener('click', (e) => openHelpPanel(e.currentTarget, 'install'));
+
+// Keeps Tab and Shift+Tab inside an open dialog (welcome card, tour, Help)
+function trapTab(e, box) {
+  if (e.key !== 'Tab') return;
+  const items = [...box.querySelectorAll('button, input, select')]
+    .filter(el => !el.disabled && el.getClientRects().length);
+  if (!items.length) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  const outside = !box.contains(document.activeElement);
+  if (outside || document.activeElement === (e.shiftKey ? first : last)) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
+  }
+}
 
 // ─── KEYBOARD ────────────────────────────────────────
 
@@ -1617,11 +1738,12 @@ function loadSmart() {
 
 document.addEventListener('keydown', (e) => {
   // Esc closes whatever is on top: calendar, modal, smart search prompt,
-  // side menu, then search
+  // welcome card, side menu, then search (the tour and Help take their own)
   if (e.key === 'Escape') {
     if (!calendar.hidden) closeCalendar();
     else if (modalOverlay.classList.contains('active')) closeModal();
     else if (smartOverlay.classList.contains('active')) closeSmartDialog();
+    else if (welcomeOverlay.classList.contains('active')) skipWelcome();
     else if (asideOverlay.classList.contains('active')) closeAside();
     else if (searchBar.classList.contains('active')) closeSearch();
     return;
@@ -1633,7 +1755,7 @@ document.addEventListener('keydown', (e) => {
   if (e.code !== 'KeyN') return;
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (isTypingTarget(e.target)) return;
-  if ([modalOverlay, asideOverlay, smartOverlay].some(el => el.classList.contains('active'))) return;
+  if ([modalOverlay, asideOverlay, smartOverlay, welcomeOverlay].some(el => el.classList.contains('active'))) return;
   e.preventDefault();
   openModal();
 });
@@ -1688,6 +1810,13 @@ function init() {
   // it loads after the page if it was used before, otherwise when the
   // search bar or side menu first opens
   if (localStorage.getItem('smartSearch') !== null) window.addEventListener('load', loadSmart, { once: true });
+
+  // First visit: the welcome card with the first render (tour.js loads only
+  // if the tour is taken). Existing tasks: a toast once the page has settled.
+  if (localStorage.getItem('tour') === null) {
+    if (tasks.length) setTimeout(offerTour, 1500);
+    else openWelcome(true);
+  }
 }
 
 init();

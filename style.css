@@ -146,6 +146,10 @@ html[lang="ar"] .aside-section-title {
   text-transform: none;
 }
 
+html[lang="ar"] .welcome-text {
+  line-height: 1.75;
+}
+
 /* Keyboard focus ring: main colour on light surfaces, yellow on the
    purple bands and in dark mode (--focus) */
 :focus-visible {
@@ -1499,6 +1503,24 @@ html[lang="ar"] .aside-section-title {
   white-space: nowrap;
 }
 
+/* Sample tasks from the tour say so on a dashed pill */
+.task-sample {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--main-tint);
+  border: 1.5px dashed var(--main-tint);
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.task-row.completed .task-sample {
+  color: var(--muted);
+  border-color: var(--line-strong);
+}
+
 /* Priority as 1, 2 or 3 bars; only High uses the status colour */
 .task-priority {
   display: inline-flex;
@@ -2213,6 +2235,7 @@ html[lang="ar"] .aside-section-title {
 .toggle {
   position: relative;
   display: inline-block;
+  flex-shrink: 0;
   width: 46px;
   height: 44px;
   cursor: pointer;
@@ -2310,6 +2333,74 @@ kbd {
   border-bottom-width: 1px;
 }
 
+/* Help rows in the side menu: they light up, and their icon and arrow move */
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 6px 10px;
+  margin-inline: -10px;
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.menu-row:hover {
+  background-color: var(--hover-tint);
+}
+
+.menu-row:active {
+  background-color: var(--press-tint);
+  transform: scale(0.98);
+  transition-duration: 0.1s;
+}
+
+.menu-row .pref-text {
+  flex: 1;
+}
+
+.menu-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--main-soft);
+  color: var(--main-tint);
+}
+
+.menu-row-icon svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease-out;
+}
+
+.menu-row:hover .menu-row-icon svg {
+  transform: rotate(calc(-12deg * var(--dir))) scale(1.12);
+}
+
+/* Points to the end side: right in English, left in Arabic */
+.menu-row-arrow {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--main-tint);
+  transform: scaleX(var(--dir));
+  transition: transform 0.2s ease-out;
+}
+
+.menu-row:hover .menu-row-arrow {
+  transform: scaleX(var(--dir)) translateX(3px);
+}
+
 /* ── Toast ── */
 .toast {
   position: fixed;
@@ -2366,6 +2457,91 @@ kbd {
 
 .toast-action:active {
   transform: scale(0.94);
+}
+
+/* ── Welcome card ──
+   Offers the tour on a first visit. The dimmed backdrop fades on a layer
+   of its own and the card only rises, so its text shows from the first
+   frame, like the rest of the page. */
+.welcome-overlay {
+  z-index: 250;
+  background-color: transparent;
+}
+
+.welcome-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--scrim);
+  animation: fade-in 0.25s ease-out;
+}
+
+.modal-overlay.welcome-overlay.active {
+  animation: none;
+}
+
+.modal-overlay.welcome-overlay.active .welcome-dialog {
+  animation: welcome-in 0.35s ease-out;
+}
+
+@keyframes welcome-in {
+  from { transform: translateY(16px) scale(0.96); }
+}
+
+.welcome-dialog {
+  position: relative;
+  max-width: 420px;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.welcome-art {
+  display: block;
+  width: 104px;
+  height: 104px;
+}
+
+.welcome-art .art-board { fill: var(--main-soft); stroke: var(--main-tint); stroke-width: 3; }
+.welcome-art .art-route { fill: none; stroke: var(--main-tint); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1 7; }
+.welcome-art .art-stop  { fill: var(--surface); stroke: var(--main-tint); stroke-width: 3; }
+.welcome-art .art-pole  { stroke: var(--main-tint); stroke-width: 3; stroke-linecap: round; }
+.welcome-art .art-flag  { fill: var(--accent); stroke: var(--main-tint); stroke-width: 2.5; stroke-linejoin: round; transform-origin: 88px 22px; }
+
+/* Not clickable: the flag waves while the pointer is on the card */
+.welcome-dialog:hover .art-flag {
+  animation: flag-wave 0.9s ease-in-out;
+}
+
+@keyframes flag-wave {
+  30% { transform: skewY(-10deg) scaleX(0.9); }
+  65% { transform: skewY(6deg); }
+}
+
+.welcome-title {
+  font-size: 22px;
+}
+
+.welcome-text {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.welcome-samples {
+  align-self: stretch;
+  margin-inline: 0;
+  text-align: start;
+  background-color: var(--main-soft);
+}
+
+.welcome-samples:hover {
+  background-color: var(--press-tint);
+}
+
+.welcome-dialog .modal-footer {
+  align-self: stretch;
+  justify-content: center;
 }
 
 /* ══════════════ RESPONSIVE ══════════════ */

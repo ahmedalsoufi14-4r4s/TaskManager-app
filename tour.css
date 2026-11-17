@@ -1,0 +1,604 @@
+/* The tour and the Help panel. Loaded with tour.js the first time either
+   opens, so the first visit stays light. Colours are the tokens from
+   style.css; its reduced-motion rule covers everything here too. */
+
+html[lang="ar"] .help-heading {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[lang="ar"] .tour-text,
+html[lang="ar"] .help-topic-text {
+  line-height: 1.75;
+}
+
+/* ── Tour ──
+   The page dims around a hole over the element being explained, with a
+   card beside it. tour.js places both and follows the element. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  animation: fade-in 0.25s ease-out;
+}
+
+.tour.leaving {
+  pointer-events: none;
+  animation: fade-out 0.2s ease-in forwards;
+}
+
+/* The hole: its wide shadow is the dimmed page, edged with a white ring */
+.tour-spot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px var(--on-main), 0 0 0 200vmax var(--scrim);
+  pointer-events: none;
+  transition: transform 0.35s ease-out, width 0.35s ease-out, height 0.35s ease-out, border-radius 0.35s ease-out;
+}
+
+.tour-spot.empty {
+  box-shadow: 0 0 0 200vmax var(--scrim);
+}
+
+/* A ring keeps breathing out of the hole */
+.tour-spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px var(--on-main);
+  opacity: 0;
+  animation: spot-ring 1.8s ease-out infinite;
+}
+
+.tour-spot.empty::after {
+  display: none;
+}
+
+@keyframes spot-ring {
+  0%   { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+/* The first placement jumps there; later ones glide */
+.tour-instant .tour-spot,
+.tour-instant .tour-card {
+  transition: none;
+}
+
+.tour-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.35s ease-out;
+  animation: tour-card-in 0.3s ease-out backwards;
+}
+
+/* Not shown until it has a place (still focusable) */
+.tour-card:not([data-side]) {
+  opacity: 0;
+}
+
+/* Uses scale, because transform holds the card's position */
+@keyframes tour-card-in {
+  from { opacity: 0; scale: 0.94; }
+}
+
+/* A tap on the dimmed page bumps the card, where the answer is */
+.tour-card.nudge {
+  animation: tour-nudge 0.4s ease-out;
+}
+
+@keyframes tour-nudge {
+  30% { scale: 1.04; }
+  65% { scale: 0.98; }
+}
+
+/* When room is short, only the text scrolls; the buttons stay in view */
+.tour-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 14px;
+}
+
+.tour-body > * {
+  flex-shrink: 0;
+}
+
+/* Arrow on the side facing the element, at its centre (--arrow) */
+.tour-arrow {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+
+.tour-card[data-side="below"] .tour-arrow { top: -8px; left: calc(var(--arrow) - 7px); border-right: none; border-bottom: none; }
+.tour-card[data-side="above"] .tour-arrow { bottom: -8px; left: calc(var(--arrow) - 7px); border-left: none; border-top: none; }
+.tour-card[data-side="right"] .tour-arrow { left: -8px; top: calc(var(--arrow) - 7px); border-top: none; border-right: none; }
+.tour-card[data-side="left"] .tour-arrow  { right: -8px; top: calc(var(--arrow) - 7px); border-bottom: none; border-left: none; }
+.tour-card[data-side="none"] .tour-arrow  { display: none; }
+
+.tour-body > .tour-content {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* A new step's text rises in */
+.tour-swap {
+  animation: fade-rise 0.3s ease-out;
+}
+
+.tour-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tour-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--main-soft);
+  color: var(--main-tint);
+}
+
+.tour-icon svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease-out;
+}
+
+.tour-card:hover .tour-icon svg {
+  transform: rotate(calc(-12deg * var(--dir))) scale(1.12);
+}
+
+.tour-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tour-title {
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--main-tint);
+}
+
+.tour-text {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* Grows from the start side, so it mirrors in Arabic */
+.tour-progress {
+  height: 6px;
+  border-radius: 999px;
+  background-color: var(--main-soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.tour-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--main-tint);
+  transition: width 0.35s ease-out;
+}
+
+.tour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tour-skip {
+  min-height: 44px;
+  padding: 0 10px;
+  margin-inline-start: -10px;
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--main-tint);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: background-color 0.2s ease-out, text-decoration-color 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.tour-skip:hover {
+  background-color: var(--hover-tint);
+  text-decoration-color: currentColor;
+}
+
+.tour-skip:active {
+  background-color: var(--press-tint);
+  transform: scale(0.96);
+}
+
+.tour-nav {
+  display: flex;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+/* Overrides the full-width buttons of small screens */
+.tour-actions .btn-secondary,
+.tour-actions .btn-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* Back and Next arrows point the reading way and nudge on hover */
+.tour-nav svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transform: scaleX(var(--dir));
+  transition: transform 0.2s ease-out;
+}
+
+.tour-back:enabled:hover svg {
+  transform: scaleX(var(--dir)) translateX(-3px);
+}
+
+.tour-next:hover .tour-next-arrow {
+  transform: scaleX(var(--dir)) translateX(3px);
+}
+
+.tour-nav .tour-next-done {
+  transform: none;
+}
+
+.tour-next:hover .tour-next-done {
+  transform: scale(1.15);
+}
+
+/* Panels the tour scrolls keep a little space at the top */
+.touring .modal,
+.touring .aside {
+  scroll-padding-block: 16px;
+}
+
+/* During the tour the header scrolls with the page, so any element can
+   move to the top of the screen with the card below it */
+.touring .header {
+  position: relative;
+}
+
+/* Narrow phones: a tighter card keeps its buttons on one row */
+@media (max-width: 360px) {
+  .tour-body {
+    gap: 12px;
+    padding: 14px 14px 12px;
+  }
+
+  .tour-title {
+    margin-top: 8px;
+    font-size: 17px;
+  }
+
+  .tour-actions .btn-secondary,
+  .tour-actions .btn-main {
+    padding: 0 12px;
+  }
+
+  .tour-skip {
+    padding: 0 8px;
+    margin-inline-start: -8px;
+  }
+}
+
+/* ── Help ──
+   Short answers, tips and shortcuts, above the side menu it opens from */
+.help-overlay {
+  z-index: 250;
+}
+
+.help-dialog {
+  --help-pad: 28px;
+  max-width: 560px;
+  gap: 18px;
+  padding: var(--help-pad);
+}
+
+/* Title, close button and search stay at the top while Help scrolls */
+.help-top {
+  position: sticky;
+  top: calc(-1 * var(--help-pad));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: calc(-1 * var(--help-pad)) calc(-1 * var(--help-pad)) 0;
+  padding: var(--help-pad) var(--help-pad) 12px;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Search box: the border and a ring close in on focus, the icon turns */
+.help-search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  padding-inline-start: 14px;
+  background-color: var(--canvas);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius);
+  outline: 2px solid transparent;
+  outline-offset: 6px;
+  transition: border-color 0.2s ease-out, background-color 0.2s ease-out,
+              outline-color 0.2s ease-out, outline-offset 0.2s ease-out;
+}
+
+.help-search:hover {
+  border-color: var(--main-tint);
+}
+
+.help-search:focus-within {
+  border-color: var(--main-tint);
+  background-color: var(--surface);
+  outline-color: var(--focus);
+  outline-offset: 2px;
+}
+
+.help-search > svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-inline-end: 6px;
+  color: var(--muted);
+  transition: transform 0.3s ease-out, color 0.3s ease-out;
+}
+
+.help-search:focus-within > svg {
+  color: var(--main-tint);
+  transform: rotate(calc(-14deg * var(--dir))) scale(1.12);
+}
+
+.help-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+}
+
+.help-input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.help-tour {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: flex-start;
+}
+
+.help-tour svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease-out;
+}
+
+.help-tour:hover svg {
+  transform: translateX(calc(3px * var(--dir)));
+}
+
+.help-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.help-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Tips, topics and the no-match note are info boxes: not clickable, they
+   lift a little and their icon moves */
+.help-tips {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-tips li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background-color: var(--main-soft);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.help-tips li:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.help-tips svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--main-tint);
+  transition: transform 0.3s ease-out;
+}
+
+.help-tips li:hover svg {
+  transform: rotate(calc(-12deg * var(--dir))) scale(1.15);
+}
+
+.help-topic {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
+}
+
+.help-topic:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--line-strong);
+}
+
+.help-topic-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--main-soft);
+  color: var(--main-tint);
+}
+
+.help-topic-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.help-topic:hover .help-topic-icon svg {
+  animation: wiggle 0.5s ease-out;
+}
+
+.help-topic-body {
+  min-width: 0;
+}
+
+.help-topic-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.help-topic-text {
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* The topic opened from the side menu's Install row lights up */
+.help-flash::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px var(--main-tint);
+  opacity: 0;
+  pointer-events: none;
+  animation: help-flash 1.2s ease-out 2;
+}
+
+@keyframes help-flash {
+  30% { opacity: 1; }
+}
+
+.help-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.help-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 14px;
+}
+
+.help-key dt {
+  display: flex;
+  gap: 4px;
+  min-width: 96px;
+}
+
+.help-key:hover kbd {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+.help-none {
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--main-tint);
+  border-radius: 8px;
+  background-color: var(--main-soft);
+  color: var(--text);
+  font-size: 14px;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.help-none:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 480px) {
+  .help-dialog {
+    --help-pad: 20px;
+  }
+}
+
+/* The Help topic opened from the menu keeps its ring instead of flashing */
+@media (prefers-reduced-motion: reduce) {
+  .help-flash::after {
+    opacity: 1;
+  }
+}
