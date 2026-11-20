@@ -292,7 +292,6 @@
             <label for="input-reminder" data-i18n="field.reminder"></label>
             <select id="input-reminder" aria-describedby="reminder-passed reminder-off reminder-error"></select>
             <div class="reminder-custom" id="reminder-custom" hidden>
-              <span class="reminder-before" data-i18n="reminder.beforeWord"></span>
               <input type="text" class="ltr-input" id="input-reminder-amount" dir="ltr" inputmode="numeric" maxlength="4" autocomplete="off"
                 data-i18n-aria-label="field.reminderAmount" aria-describedby="reminder-error" />
               <select id="input-reminder-unit" data-i18n-aria-label="field.reminderUnit">
@@ -300,6 +299,7 @@
                 <option value="60"></option>
                 <option value="1440"></option>
               </select>
+              <p class="reminder-phrase" id="reminder-phrase" aria-live="polite"></p>
             </div>
             <p class="deadline-note" id="reminder-passed" data-i18n="reminder.passed" hidden></p>
             <div class="deadline-note reminder-off" id="reminder-off" hidden>

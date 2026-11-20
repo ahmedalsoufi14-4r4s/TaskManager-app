@@ -598,6 +598,7 @@ const reminderOff         = document.getElementById('reminder-off');
 const reminderError       = document.getElementById('reminder-error');
 const btnReminderOn       = document.getElementById('btn-reminder-on');
 const prefReminder        = document.getElementById('pref-reminder');
+const reminderPhrase      = document.getElementById('reminder-phrase');
 const UNIT_MINUTES = { minute: 1, hour: 60, day: 1440 };
 
 // Option texts in the current language, for the form and the menu
@@ -616,13 +617,15 @@ function renderReminderOptions() {
   renderReminderUnits();
 }
 
-// Unit names agree with the number typed ("1 hour", "2 hours")
+// The picker names the units; the line under it says the whole reminder
+// with the right plural ("2 hours before", «قبل ساعتين»)
 function renderReminderUnits() {
-  const count = Number(normalizeDigits(inputReminderAmount.value.trim())) || 5;
   [...inputReminderUnit.options].forEach(option => {
     const unit = Object.keys(UNIT_MINUTES).find(key => String(UNIT_MINUTES[key]) === option.value);
-    option.textContent = t(`reminder.unit.${unit}`, { count });
+    option.textContent = t(`reminder.unit.${unit}`);
   });
+  const reminder = readReminder();
+  reminderPhrase.textContent = inputReminder.value === 'custom' && !reminder.error ? reminderText(reminder.value) : '';
 }
 
 // Puts a reminder (minutes or null) into the field
@@ -680,6 +683,7 @@ inputReminder.addEventListener('change', () => {
   reminderError.hidden = true;
   reminderCustom.hidden = !custom;
   if (custom) inputReminderAmount.focus();
+  renderReminderUnits();
   updateDeadlineSummary();
 });
 
@@ -690,7 +694,10 @@ inputReminderAmount.addEventListener('input', () => {
   updateDeadlineSummary();
 });
 
-inputReminderUnit.addEventListener('change', updateDeadlineSummary);
+inputReminderUnit.addEventListener('change', () => {
+  renderReminderUnits();
+  updateDeadlineSummary();
+});
 
 // Turns notifications on from the form; blocked ones say where to allow them
 btnReminderOn.addEventListener('click', async () => {
@@ -1622,11 +1629,12 @@ prefAi.addEventListener('change', () => setAi(prefAi.checked));
 
 // Each task reminds once, at its own reminder time. One that came due while
 // the app was closed, or was already due when saved, shows as soon as it
-// can if the deadline is ahead.
-// Completed and overdue tasks never notify, so "at the deadline" comes in
-// the last 30 seconds before it. Notified ids are kept in localStorage so a
-// reload does not notify again; a new deadline or reminder clears them.
-const AT_DEADLINE_LEAD = 30 * 1000;
+// can if the deadline is ahead. Completed and overdue tasks never notify,
+// except that "at the deadline" may still come within a short grace after
+// it, since the task turns overdue at that very moment. Notified ids are
+// kept in localStorage so a reload does not notify again; a new deadline or
+// reminder clears them.
+const AT_DEADLINE_GRACE = 60 * 1000;
 let reminderTimer = null;
 let notifiedIds = new Set(JSON.parse(localStorage.getItem('notifiedIds') || '[]'));
 
@@ -1649,8 +1657,9 @@ function checkNotifications() {
     const reminder = taskReminder(task);
     if (task.completed || task.sample || reminder === null || notifiedIds.has(task.id)) return;
     const due = new Date(task.datetime).getTime();
-    if (Number.isNaN(due) || due <= now) return;
-    const from = due - (reminder === 0 ? AT_DEADLINE_LEAD : reminder * 60000);
+    const until = reminder === 0 ? due + AT_DEADLINE_GRACE : due;
+    if (Number.isNaN(due) || now >= until) return;
+    const from = due - reminder * 60000;
     if (from > now) {
       next = Math.min(next, from);
       return;
