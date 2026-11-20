@@ -9,12 +9,16 @@
 // One step per feature, in the order a new user meets them. target gives
 // the element (or neighbouring elements) to point at. modal, aside, filters
 // and search say what must be open; list steps show every task (filters
-// and search are set aside for them); select steps select one task.
+// and search are set aside for them); select steps select one task. ai
+// steps are in the tour only while AI features are on (ai.js), and always
+// in Help.
 const TOUR_STEPS = [
   { id: 'add', icon: 'plus', target: () => btnAdd },
+  { id: 'quickadd', icon: 'wand-sparkles', ai: true, target: () => document.getElementById('ai-quick') },
   { id: 'date', icon: 'calendar', modal: true, target: () => document.querySelectorAll('.deadline-field')[0] },
   { id: 'time', icon: 'clock', modal: true, target: () => document.querySelectorAll('.deadline-field')[1] },
   { id: 'preview', icon: 'calendar-clock', modal: true, target: () => [deadlineSummary, deadlineWarning] },
+  { id: 'suggest', icon: 'sparkles', ai: true, modal: true, target: () => [inputName, document.getElementById('ai-suggest')] },
   { id: 'select', icon: 'mouse-pointer-click', list: true, select: true, target: () => tourRow('open') },
   { id: 'edit', icon: 'pencil', list: true, select: true, target: () => [btnDelete, btnEdit] },
   { id: 'complete', icon: 'square-check-big', list: true, target: () => tourCheckbox() },
@@ -23,12 +27,14 @@ const TOUR_STEPS = [
   { id: 'progress', icon: 'target', target: () => document.querySelector('.stats') },
   { id: 'filters', icon: 'funnel', filters: true, target: () => filterBar },
   { id: 'sort', icon: 'arrow-down-up', target: () => document.querySelector('.sort-control') },
+  { id: 'plan', icon: 'list-ordered', ai: true, target: () => document.getElementById('btn-ai-plan') },
   { id: 'search', icon: 'search', search: true, target: () => searchBar },
   { id: 'smart', icon: 'sparkles', search: true, target: () => document.getElementById('btn-smart') },
   { id: 'language', icon: 'languages', target: () => btnLang },
   { id: 'theme', icon: 'sun-moon', aside: true, target: () => prefTheme.closest('.pref-row') },
   { id: 'notifications', icon: 'bell', aside: true,
     target: () => [prefNotif.closest('.pref-row'), document.getElementById('btn-notif-settings')] },
+  { id: 'ai', icon: 'wand-sparkles', aside: true, target: () => prefAi.closest('.pref-row') },
   { id: 'export', icon: 'file-text', aside: true, target: () => document.getElementById('btn-export') },
   { id: 'backup', icon: 'database-backup', aside: true,
     target: () => [document.getElementById('btn-backup'), document.getElementById('btn-restore')] },
@@ -135,6 +141,8 @@ let tourEl = null;
 let tourCard, tourBody, tourContent, tourSpot, tourIcon, tourCount, tourTitle, tourText;
 let tourBar, tourLive, tourBackBtn, tourNextBtn, tourNextText;
 let tourIndex = 0;
+// This run's steps (TOUR_STEPS without the AI ones when they are off)
+let tourSteps = TOUR_STEPS;
 // What the tour opened, changed or hid, to put back when it ends
 let tourSaved = null;
 let tourInert = [];
@@ -245,6 +253,9 @@ function runTour({ opener = null, samples = false } = {}) {
   window.addEventListener('keydown', tourKeydown, true);
   tourPlaced = '';
   tourIndex = 0;
+  // AI steps need AI features on and ai.js loaded
+  const aiReady = localStorage.getItem('ai') === 'on' && document.getElementById('ai-suggest');
+  tourSteps = TOUR_STEPS.filter(step => !step.ai || aiReady);
   showTourStep(0);
   tourNextBtn.focus();
   tourFollow();
@@ -254,7 +265,7 @@ function showTourStep(index) {
   const swap = tourIndex !== index;
   const focused = document.activeElement;
   tourIndex = index;
-  applyTourState(TOUR_STEPS[index]);
+  applyTourState(tourSteps[index]);
   renderTourCard(swap);
   // Closing a panel can move focus; it stays on the card's button
   if (tourCard.contains(focused) && !focused.disabled) focused.focus();
@@ -268,7 +279,7 @@ function showTourStep(index) {
 function tourGo(delta) {
   const index = tourIndex + delta;
   if (index < 0) return;
-  if (index >= TOUR_STEPS.length) endTour(true);
+  if (index >= tourSteps.length) endTour(true);
   else showTourStep(index);
 }
 
@@ -331,8 +342,8 @@ function tourSelect(ids) {
 
 function renderTourCard(swap = false) {
   if (!tourEl) return;
-  const step = TOUR_STEPS[tourIndex];
-  const total = TOUR_STEPS.length;
+  const step = tourSteps[tourIndex];
+  const total = tourSteps.length;
   const last = tourIndex === total - 1;
   tourEl.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   tourEl.querySelector('.tour-skip').setAttribute('aria-label', t('tour.skipLabel'));
@@ -358,7 +369,7 @@ function renderTourCard(swap = false) {
 }
 
 function tourTargets() {
-  const found = TOUR_STEPS[tourIndex].target();
+  const found = tourSteps[tourIndex].target();
   return (Array.isArray(found) ? found : [found]).filter(el => el && el.isConnected);
 }
 

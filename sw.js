@@ -2,7 +2,7 @@
 
 // Bump the version whenever a cached file changes. Installing a new
 // version deletes the old cache.
-const CACHE_NAME = 'task-manager-v16';
+const CACHE_NAME = 'task-manager-v17';
 
 // Paths are relative to this file, so the app works under /TaskManager-app/
 const APP_SHELL = [
@@ -14,6 +14,8 @@ const APP_SHELL = [
   'semantic-worker.js',
   'tour.js',
   'tour.css',
+  'ai.js',
+  'ai.css',
   'app.js',
   'manifest.webmanifest',
   'lib/lucide-1.51.0.min.js',

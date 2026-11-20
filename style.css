@@ -1957,6 +1957,145 @@ html[lang="ar"] .welcome-text {
   white-space: nowrap;
 }
 
+/* ── AI features ──
+   The quick add bar and Plan my day show only with the setting on
+   (html.ai-on, set before the first paint); the mic only where the browser
+   can listen (html.speech). The rest of their styles are in ai.css, which
+   loads with ai.js. */
+html:not(.ai-on) .ai-only,
+html:not(.speech) .ai-mic {
+  display: none;
+}
+
+/* Quick add: a field like the search bar, its wand turns on focus */
+.ai-quick {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: 2px 4px;
+  padding-inline-start: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+  outline: 2px solid transparent;
+  outline-offset: 6px;
+  animation: drop-in 0.3s ease-out;
+  transition: border-color 0.2s ease-out, outline-color 0.2s ease-out, outline-offset 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.ai-quick:hover {
+  border-color: var(--main-tint);
+}
+
+.ai-quick:focus-within {
+  border-color: var(--main-tint);
+  outline-color: var(--focus);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-md);
+}
+
+.ai-quick > svg {
+  color: var(--main-tint);
+  flex-shrink: 0;
+  margin-inline-end: 6px;
+  transition: transform 0.3s ease-out;
+}
+
+.ai-quick:focus-within > svg {
+  transform: rotate(calc(-14deg * var(--dir))) scale(1.12);
+}
+
+.ai-quick input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+}
+
+.ai-quick input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+/* Very narrow phones: the wand goes so the example still fits */
+@media (max-width: 340px) {
+  .ai-quick {
+    padding-inline-start: 12px;
+  }
+
+  .ai-quick > svg {
+    display: none;
+  }
+
+  .ai-quick input {
+    font-size: 14px;
+  }
+}
+
+/* The arrow points the way the text reads and nudges forward on hover */
+.ai-go svg {
+  transform: scaleX(var(--dir));
+}
+
+.ai-go:enabled:hover svg {
+  transform: translateX(calc(3px * var(--dir))) scaleX(var(--dir));
+}
+
+.ai-mic:hover svg {
+  transform: translateY(-2px) scale(1.1);
+}
+
+/* Plan my day: an outlined pill at the start of the list toolbar */
+.ai-plan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  color: var(--main-tint);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  animation: fade-rise 0.3s ease-out;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.ai-plan-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease-out;
+}
+
+.ai-plan-btn:hover {
+  border-color: var(--main-tint);
+  background-color: var(--main-soft);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.ai-plan-btn:hover svg {
+  transform: translateX(calc(3px * var(--dir)));
+}
+
+.ai-plan-btn:active {
+  transform: scale(0.96);
+  box-shadow: var(--shadow-sm);
+  transition-duration: 0.1s;
+}
+
 /* ── Filter bar ── */
 .filter-bar {
   display: none;

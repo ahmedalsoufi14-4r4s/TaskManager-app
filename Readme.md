@@ -26,6 +26,14 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - Quick deadline entry: DD/MM/YYYY date with a calendar, 12-hour time with AM/PM, Today / Tomorrow / Next week and time buttons, with a preview and a warning for past times
 - English and Arabic with a one-click switch: full right-to-left layout, Arabic dates and plurals, and a local Arabic font that works offline
 - Built-in guide: a welcome tour that points out every feature on the real page (with optional sample tasks), plus How to use and Help and tips in the menu
+- Optional AI features (off until turned on in the menu), using Claude through a small Cloudflare Worker:
+  - Quick add in plain English or Arabic (Saudi dialect included), typed or spoken, that fills the add form for review
+  - Label and priority suggestions while typing a new task's name, used only with one tap
+  - Plan my day: an order for today's and overdue tasks with a short reason for each
+
+## AI Worker
+
+`worker/` holds the Cloudflare Worker behind the AI features. It has three fixed endpoints (`/parse`, `/suggest`, `/plan`) with their instructions on the server, answers only the GitHub Pages origin, limits input sizes, and has a per-IP rate limit and a daily cap (see `wrangler.toml`). It uses Claude Haiku with structured JSON output and checks every answer. The API key is the `ANTHROPIC_API_KEY` secret, set in the Cloudflare dashboard and never stored in the repo. Deploy with `npm install` and `npx wrangler deploy` in `worker/`.
 
 ## Tech stack
 

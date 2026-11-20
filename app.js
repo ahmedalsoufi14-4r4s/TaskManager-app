@@ -795,6 +795,8 @@ function openModal(task = null) {
     inputCustomLabel.value = '';
     customLabelGroup.style.display = 'none';
   }
+  // AI features: label and priority suggestions for new tasks
+  window.aiModalOpened?.(task);
 
   modalOverlay.classList.remove('leaving');
   modalOverlay.classList.add('active');
@@ -1397,6 +1399,28 @@ prefNotif.addEventListener('change', async () => {
   localStorage.setItem('notifications', prefNotif.checked);
 });
 
+// AI features
+// Quick add, suggestions and Plan my day (ai.js) send text to Claude
+// through the app's Worker, so they stay off until turned on here. Their
+// code and styles load only then. The 'ai-on' class on <html> shows the
+// quick add bar and the plan button (set before the first paint too).
+const prefAi = document.getElementById('pref-ai');
+prefAi.checked = localStorage.getItem('ai') === 'on';
+
+function loadAi() {
+  return Promise.all([loadGuideFile('link', 'ai.css'), loadGuideFile('script', 'ai.js')]).catch(() => {});
+}
+
+function setAi(on, save = true) {
+  prefAi.checked = on;
+  if (save) localStorage.setItem('ai', on ? 'on' : 'off');
+  document.documentElement.classList.toggle('ai-on', on);
+  if (on) loadAi();
+  window.aiChanged?.();
+}
+
+prefAi.addEventListener('change', () => setAi(prefAi.checked));
+
 // Remind 15 minutes before a deadline, once per task. Notified ids are
 // kept in localStorage so a reload does not notify again.
 const NOTIFY_BEFORE_MS = 15 * 60 * 1000;
@@ -1577,6 +1601,7 @@ function applyLanguage() {
 
   renderToast();
   window.renderSmart?.();
+  window.renderAi?.();
   window.renderGuide?.();
   applyFilterAndSearch();
   // Item widths and the start side change with the language
@@ -1596,6 +1621,7 @@ prefLang.addEventListener('change', () => setLanguage(prefLang.value));
 // A switch made in another open tab of the app
 window.addEventListener('storage', (e) => {
   if (e.key === 'lang' && e.newValue && e.newValue !== currentLang) setLanguage(e.newValue, false);
+  if (e.key === 'ai') setAi(e.newValue === 'on', false);
 });
 
 // ─── GUIDE ───────────────────────────────────────────
@@ -1810,6 +1836,8 @@ function init() {
   // it loads after the page if it was used before, otherwise when the
   // search bar or side menu first opens
   if (localStorage.getItem('smartSearch') !== null) window.addEventListener('load', loadSmart, { once: true });
+  // AI features load only when turned on, also after the first render
+  if (localStorage.getItem('ai') === 'on') window.addEventListener('load', loadAi, { once: true });
 
   // First visit: the welcome card with the first render (tour.js loads only
   // if the tour is taken). Existing tasks: a toast once the page has settled.

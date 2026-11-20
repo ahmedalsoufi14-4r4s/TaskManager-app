@@ -13,6 +13,11 @@
       try { var savedTheme = localStorage.getItem('theme'); } catch (e) {}
       document.documentElement.dataset.theme = savedTheme === 'light' || savedTheme === 'dark'
         ? savedTheme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      // AI features' quick add bar and plan button show from the first
+      // paint, so they never push the list down; the mic only where the
+      // browser can listen
+      try { if (localStorage.getItem('ai') === 'on') document.documentElement.classList.add('ai-on'); } catch (e) {}
+      if (window.SpeechRecognition || window.webkitSpeechRecognition) document.documentElement.classList.add('speech');
     </script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" href="icons/icon-192.png" />
@@ -102,6 +107,20 @@
     <!-- MAIN -->
     <main class="main">
 
+      <!-- QUICK ADD (AI features, ai.js): a task in plain words fills the add form -->
+      <div class="ai-quick ai-only" id="ai-quick">
+        <i data-lucide="wand-sparkles"></i>
+        <input type="text" id="ai-quick-input" dir="auto" maxlength="300" autocomplete="off" enterkeyhint="go"
+          data-i18n-placeholder="ai.quickPlaceholder" data-i18n-aria-label="ai.quickLabel" />
+        <button type="button" class="icon-btn ai-mic" id="btn-ai-mic" aria-pressed="false" data-i18n-title="ai.mic" data-i18n-aria-label="ai.mic">
+          <i data-lucide="mic"></i>
+        </button>
+        <button type="button" class="icon-btn ai-go" id="btn-ai-go" disabled data-i18n-title="ai.quickGo" data-i18n-aria-label="ai.quickGo">
+          <i data-lucide="arrow-right"></i>
+        </button>
+        <span class="sr-only" id="ai-quick-status" role="status"></span>
+      </div>
+
       <!-- SEARCH BAR -->
       <div class="search-bar" id="search-bar">
         <i data-lucide="search"></i>
@@ -152,6 +171,11 @@
 
       <!-- LIST TOOLBAR -->
       <div class="list-toolbar">
+        <!-- Plan my day (AI features, ai.js) -->
+        <button type="button" class="ai-plan-btn ai-only" id="btn-ai-plan" aria-haspopup="dialog">
+          <i data-lucide="list-ordered"></i>
+          <span data-i18n="ai.plan"></span>
+        </button>
         <div class="sort-control">
           <span id="sort-label" data-i18n="sort.by"></span>
           <div class="segmented" role="group" aria-labelledby="sort-label">
@@ -367,6 +391,18 @@
             </div>
             <label class="toggle">
               <input type="checkbox" id="pref-smart" aria-describedby="smart-hint" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- AI features: off until turned on, since they send text to Claude -->
+          <div class="pref-row">
+            <div class="pref-text">
+              <label class="pref-label" for="pref-ai" data-i18n="menu.ai"></label>
+              <span class="pref-hint" id="ai-hint" data-i18n="menu.aiHint"></span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="pref-ai" aria-describedby="ai-hint" />
               <span class="toggle-slider"></span>
             </label>
           </div>

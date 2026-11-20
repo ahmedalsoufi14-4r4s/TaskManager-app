@@ -1,0 +1,26 @@
+# Task Manager AI: the Worker between the app and the Claude API.
+# No secrets here. The API key is the ANTHROPIC_API_KEY secret, added in
+# the Cloudflare dashboard (Settings > Variables and Secrets).
+name = "task-manager-ai"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+# The only site allowed to call the Worker (GitHub Pages)
+ALLOWED_ORIGIN = "https://ahmedalsoufi14-4r4s.github.io"
+# Requests per IP per minute, and requests for everyone per day (UTC)
+PER_MINUTE = "20"
+DAILY_CAP = "300"
+
+# Counts requests for the limits above (src/guard.js)
+[[durable_objects.bindings]]
+name = "GUARD"
+class_name = "Guard"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Guard"]
+
+[observability]
+enabled = true
