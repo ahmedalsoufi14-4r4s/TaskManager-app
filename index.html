@@ -287,6 +287,28 @@
             <p class="deadline-note deadline-error" id="deadline-error" role="alert" hidden></p>
           </fieldset>
 
+          <!-- REMINDER: how long before the deadline to notify, or a custom time -->
+          <div class="form-group reminder-group" id="reminder-group">
+            <label for="input-reminder" data-i18n="field.reminder"></label>
+            <select id="input-reminder" aria-describedby="reminder-passed reminder-off reminder-error"></select>
+            <div class="reminder-custom" id="reminder-custom" hidden>
+              <span class="reminder-before" data-i18n="reminder.beforeWord"></span>
+              <input type="text" class="ltr-input" id="input-reminder-amount" dir="ltr" inputmode="numeric" maxlength="4" autocomplete="off"
+                data-i18n-aria-label="field.reminderAmount" aria-describedby="reminder-error" />
+              <select id="input-reminder-unit" data-i18n-aria-label="field.reminderUnit">
+                <option value="1"></option>
+                <option value="60"></option>
+                <option value="1440"></option>
+              </select>
+            </div>
+            <p class="deadline-note" id="reminder-passed" data-i18n="reminder.passed" hidden></p>
+            <div class="deadline-note reminder-off" id="reminder-off" hidden>
+              <span id="reminder-off-text"></span>
+              <button type="button" class="btn-secondary reminder-off-btn" id="btn-reminder-on"></button>
+            </div>
+            <p class="deadline-note deadline-error" id="reminder-error" role="alert" data-i18n="reminder.invalid" hidden></p>
+          </div>
+
           <div class="form-group">
             <label for="input-label" data-i18n="field.label"></label>
             <select id="input-label">
@@ -416,6 +438,11 @@
               <input type="checkbox" id="pref-notifications" aria-describedby="notif-hint" />
               <span class="toggle-slider"></span>
             </label>
+          </div>
+
+          <div class="pref-row">
+            <label class="pref-label" for="pref-reminder" data-i18n="menu.defaultReminder"></label>
+            <select id="pref-reminder"></select>
           </div>
 
           <button class="btn-secondary full-width" id="btn-notif-settings" data-i18n="menu.notificationSettings"></button>

@@ -12,7 +12,7 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - Filter by All / Active / Overdue / Completed
 - Real-time search
 - Optional smart search by meaning in English and Arabic that runs on the device (Transformers.js), with no task data leaving the browser
-- Reminder notification 15 minutes before a deadline
+- A reminder per task (none, at the deadline, 5 min to 1 day before, or a custom time), a default reminder for new tasks, and a bell on each card
 - Dark / light / system theme in purple and yellow, with a softly moving background
 - Export a readable .txt report
 - Backup and restore tasks as JSON

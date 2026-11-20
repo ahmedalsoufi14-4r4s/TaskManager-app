@@ -133,6 +133,11 @@ function fillForm(task) {
     inputPriority.value = task.priority;
     filled.push(inputPriority);
   }
+  // Only when the words asked for one; older answers have no reminder
+  if (task.reminder !== undefined && validReminder(task.reminder)) {
+    setReminderField(task.reminder);
+    filled.push(inputReminder);
+  }
   // What the answer set counts as chosen, so a suggestion won't flip it
   suggestChosen = { label: !!task.label, priority: !!task.priority };
   flashFields(filled);

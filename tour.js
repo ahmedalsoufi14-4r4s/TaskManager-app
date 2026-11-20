@@ -18,6 +18,7 @@ const TOUR_STEPS = [
   { id: 'date', icon: 'calendar', modal: true, target: () => document.querySelectorAll('.deadline-field')[0] },
   { id: 'time', icon: 'clock', modal: true, target: () => document.querySelectorAll('.deadline-field')[1] },
   { id: 'preview', icon: 'calendar-clock', modal: true, target: () => [deadlineSummary, deadlineWarning] },
+  { id: 'reminder', icon: 'bell-ring', modal: true, target: () => [document.querySelector('label[for="input-reminder"]'), inputReminder] },
   { id: 'suggest', icon: 'sparkles', ai: true, modal: true, target: () => [inputName, document.getElementById('ai-suggest')] },
   { id: 'select', icon: 'mouse-pointer-click', list: true, select: true, target: () => tourRow('open') },
   { id: 'edit', icon: 'pencil', list: true, select: true, target: () => [btnDelete, btnEdit] },
@@ -33,7 +34,7 @@ const TOUR_STEPS = [
   { id: 'language', icon: 'languages', target: () => btnLang },
   { id: 'theme', icon: 'sun-moon', aside: true, target: () => prefTheme.closest('.pref-row') },
   { id: 'notifications', icon: 'bell', aside: true,
-    target: () => [prefNotif.closest('.pref-row'), document.getElementById('btn-notif-settings')] },
+    target: () => [prefNotif.closest('.pref-row'), prefReminder.closest('.pref-row')] },
   { id: 'ai', icon: 'wand-sparkles', aside: true, target: () => prefAi.closest('.pref-row') },
   { id: 'export', icon: 'file-text', aside: true, target: () => document.getElementById('btn-export') },
   { id: 'backup', icon: 'database-backup', aside: true,
@@ -45,10 +46,9 @@ const TOUR_STEPS = [
 ];
 
 // Numbers in the texts: the smart search download (SMART_DOWNLOAD_MB in
-// semantic.js, which may not be loaded) and the reminder lead time
+// semantic.js, which may not be loaded)
 const GUIDE_PARAMS = {
   smart: { size: 138 },
-  notifications: { minutes: NOTIFY_BEFORE_MS / 60000 },
 };
 
 function guideText(id) {

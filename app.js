@@ -19,6 +19,44 @@ function saveTasks() {
   window.smartTasksChanged?.();
 }
 
+// Reminders are stored on a task as minutes before the deadline (0 is at
+// the deadline), or null for none. Tasks saved before reminders could be
+// chosen have no field and keep the old 15 minutes.
+const DEFAULT_REMINDER = 15;
+const REMINDER_PRESETS = [0, 5, 15, 30, 60, 1440];
+const MAX_REMINDER = 30 * 1440;
+
+function validReminder(value) {
+  return value === null || (Number.isInteger(value) && value >= 0 && value <= MAX_REMINDER);
+}
+
+function taskReminder(task) {
+  return task.reminder !== undefined && validReminder(task.reminder) ? task.reminder : DEFAULT_REMINDER;
+}
+
+// What new tasks start with: the menu's Default reminder
+function defaultReminder() {
+  const saved = localStorage.getItem('defaultReminder');
+  if (saved === 'none') return null;
+  return saved !== null && REMINDER_PRESETS.includes(Number(saved)) ? Number(saved) : DEFAULT_REMINDER;
+}
+
+// Minutes as a count of the largest unit that fits exactly
+function reminderParts(minutes) {
+  if (minutes % 1440 === 0) return { unit: 'day', count: minutes / 1440 };
+  if (minutes % 60 === 0) return { unit: 'hour', count: minutes / 60 };
+  return { unit: 'minute', count: minutes };
+}
+
+// "30 minutes before", "At the deadline" or "No reminder", or the card's
+// shorter "30 min before"
+function reminderText(minutes, short = false) {
+  if (minutes === null) return t('reminder.none');
+  if (minutes === 0) return t(short ? 'reminder.cardAt' : 'reminder.atDeadline');
+  const { unit, count } = reminderParts(minutes);
+  return t(short ? 'reminder.card' : 'reminder.option', { amount: t(`${short ? 'unit' : 'unitLong'}.${unit}`, { count }) });
+}
+
 // Random UUID, with a fallback where crypto.randomUUID is missing (old
 // browsers, plain http). Older tasks keep their numeric string ids.
 function generateId() {
@@ -196,6 +234,10 @@ function renderTaskRow(task, related = false) {
     ? `<span class="task-related" title="${t('task.related')}"><i data-lucide="sparkles" aria-hidden="true"></i><span class="sr-only">${t('task.related')}</span></span>`
     : '';
   const sampleTag = task.sample ? `<span class="task-sample">${t('sample.tag')}</span>` : '';
+  // A bell with the task's reminder, if it has one
+  const reminder = taskReminder(task);
+  const reminderTag = reminder === null ? '' : `<span class="task-reminder" title="${escapeHTML(t('reminder.title', { value: reminderText(reminder) }))}">
+        <i data-lucide="bell" aria-hidden="true"></i><span class="sr-only">${escapeHTML(t('field.reminder'))}: </span>${escapeHTML(reminderText(reminder, true))}</span>`;
   row.innerHTML = `
     <div class="task-info">
       ${relatedHint}
@@ -208,6 +250,7 @@ function renderTaskRow(task, related = false) {
         <span class="task-label-text">${escapeHTML(labelName(task.label))}</span>
       </span>
       <span class="task-priority priority-${task.priority}" role="img" title="${priorityTitle}" aria-label="${priorityTitle}"><span></span><span></span><span></span></span>
+      ${reminderTag}
     </div>
     <input type="checkbox" class="task-checkbox${task.id === poppedId ? ' pop' : ''}" aria-label="${escapeHTML(t('task.markDone', { name: task.name }))}"
       ${task.completed ? 'checked' : ''} ${locked ? `disabled title="${t('task.locked')}"` : ''} />
@@ -513,6 +556,7 @@ function updateDeadlineSummary() {
     deadlineSummary.textContent = t(!date && !time ? 'deadline.pickBoth'
       : !date ? 'deadline.pickDate' : 'deadline.pickTime');
     deadlineWarning.hidden = true;
+    updateReminderNotes(null);
     return;
   }
 
@@ -523,6 +567,14 @@ function updateDeadlineSummary() {
     date: formatDate(task.datetime),
     relative: formatRelative(task),
   });
+  // When the reminder comes: its time on the same day, or its date and time
+  const remindAt = updateReminderNotes(task.datetime);
+  if (remindAt !== null && due > new Date()) {
+    const at = new Date(remindAt);
+    text += t('reminder.preview', {
+      time: at.toDateString() === due.toDateString() ? formatClock(at.getHours(), at.getMinutes()) : formatDate(at),
+    });
+  }
   // A time skipped by a clock change (e.g. 2:30 AM) moves to the real one
   const realTime = `${pad(due.getHours())}:${pad(due.getMinutes())}`;
   if (realTime !== time) {
@@ -531,6 +583,127 @@ function updateDeadlineSummary() {
   deadlineSummary.textContent = text;
   deadlineWarning.hidden = !isOverdue(task);
 }
+
+// ── Reminder ──
+// Common times before the deadline, or a custom number of minutes, hours
+// or days. The preview line says when it comes, and notes say if that time
+// has passed or notifications are off (with a button to turn them on).
+
+const inputReminder       = document.getElementById('input-reminder');
+const reminderCustom      = document.getElementById('reminder-custom');
+const inputReminderAmount = document.getElementById('input-reminder-amount');
+const inputReminderUnit   = document.getElementById('input-reminder-unit');
+const reminderPassed      = document.getElementById('reminder-passed');
+const reminderOff         = document.getElementById('reminder-off');
+const reminderError       = document.getElementById('reminder-error');
+const btnReminderOn       = document.getElementById('btn-reminder-on');
+const prefReminder        = document.getElementById('pref-reminder');
+const UNIT_MINUTES = { minute: 1, hour: 60, day: 1440 };
+
+// Option texts in the current language, for the form and the menu
+function renderReminderOptions() {
+  const formValue = inputReminder.value;
+  [inputReminder, prefReminder].forEach(select => {
+    select.replaceChildren(
+      new Option(t('reminder.none'), 'none'),
+      ...REMINDER_PRESETS.map(minutes => new Option(reminderText(minutes), String(minutes))),
+    );
+  });
+  inputReminder.add(new Option(t('reminder.custom'), 'custom'));
+  if (formValue) inputReminder.value = formValue;
+  const fallback = defaultReminder();
+  prefReminder.value = fallback === null ? 'none' : String(fallback);
+  renderReminderUnits();
+}
+
+// Unit names agree with the number typed ("1 hour", "2 hours")
+function renderReminderUnits() {
+  const count = Number(normalizeDigits(inputReminderAmount.value.trim())) || 5;
+  [...inputReminderUnit.options].forEach(option => {
+    const unit = Object.keys(UNIT_MINUTES).find(key => String(UNIT_MINUTES[key]) === option.value);
+    option.textContent = t(`reminder.unit.${unit}`, { count });
+  });
+}
+
+// Puts a reminder (minutes or null) into the field
+function setReminderField(minutes) {
+  clearFieldError(inputReminderAmount);
+  reminderError.hidden = true;
+  const choice = minutes === null ? 'none' : REMINDER_PRESETS.includes(minutes) ? String(minutes) : 'custom';
+  inputReminder.value = choice;
+  reminderCustom.hidden = choice !== 'custom';
+  if (choice === 'custom') {
+    const { unit, count } = reminderParts(minutes);
+    inputReminderAmount.value = formatDigits(String(count));
+    inputReminderUnit.value = String(UNIT_MINUTES[unit]);
+  } else {
+    inputReminderAmount.value = '';
+    inputReminderUnit.value = '1';
+  }
+  renderReminderUnits();
+  updateDeadlineSummary();
+}
+
+// The field's reminder: { value } in minutes or null, or { error: true }
+// for a custom amount that is not a whole number from 1 up to 30 days
+function readReminder() {
+  if (inputReminder.value === 'none') return { value: null };
+  if (inputReminder.value !== 'custom') return { value: Number(inputReminder.value) };
+  const text = normalizeDigits(inputReminderAmount.value.trim());
+  const minutes = /^\d{1,4}$/.test(text) ? Number(text) * Number(inputReminderUnit.value) : NaN;
+  return minutes >= 1 && minutes <= MAX_REMINDER ? { value: minutes } : { error: true };
+}
+
+// Shows or hides the notes for a deadline ("YYYY-MM-DDTHH:mm" or null),
+// and returns when the reminder comes (ms) or null
+function updateReminderNotes(datetime) {
+  const reminder = readReminder();
+  const on = !reminder.error && reminder.value !== null;
+  const due = datetime ? new Date(datetime).getTime() : NaN;
+  const remindAt = on && !Number.isNaN(due) ? due - reminder.value * 60000 : null;
+  const now = Date.now();
+  reminderPassed.hidden = !(remindAt !== null && due > now && remindAt <= now);
+
+  const state = notificationState();
+  reminderOff.hidden = !on || state === 'on';
+  if (!reminderOff.hidden) {
+    document.getElementById('reminder-off-text').textContent = t(`reminder.${state}`);
+    btnReminderOn.hidden = state === 'unsupported';
+    btnReminderOn.textContent = t(state === 'blocked' ? 'reminder.howTo' : 'reminder.turnOn');
+  }
+  return remindAt;
+}
+
+inputReminder.addEventListener('change', () => {
+  const custom = inputReminder.value === 'custom';
+  clearFieldError(inputReminderAmount);
+  reminderError.hidden = true;
+  reminderCustom.hidden = !custom;
+  if (custom) inputReminderAmount.focus();
+  updateDeadlineSummary();
+});
+
+inputReminderAmount.addEventListener('input', () => {
+  clearFieldError(inputReminderAmount);
+  reminderError.hidden = true;
+  renderReminderUnits();
+  updateDeadlineSummary();
+});
+
+inputReminderUnit.addEventListener('change', updateDeadlineSummary);
+
+// Turns notifications on from the form; blocked ones say where to allow them
+btnReminderOn.addEventListener('click', async () => {
+  if (notificationState() === 'blocked') {
+    showToast(() => t('toast.notificationHelp'));
+    return;
+  }
+  await turnOnNotifications();
+  updateDeadlineSummary();
+  (reminderOff.hidden ? inputReminder : btnReminderOn).focus();
+});
+
+prefReminder.addEventListener('change', () => localStorage.setItem('defaultReminder', prefReminder.value));
 
 // errorText is a function that returns the message in the current
 // language, so a visible error follows a language switch
@@ -781,6 +954,7 @@ function openModal(task = null) {
   inputName.value      = task ? task.name : '';
   inputPriority.value  = task ? task.priority : 'low';
   setDeadline(task ? task.datetime : defaultDeadline());
+  setReminderField(task ? taskReminder(task) : defaultReminder());
 
   updateQuickDateTitles();
   closeCalendar(false);
@@ -913,6 +1087,13 @@ document.getElementById('btn-save').addEventListener('click', () => {
   // time skipped by a clock change into the real one.
   const datetime = toDatetimeValue(new Date(`${dateResult.date}T${timeResult.time}`));
 
+  const reminder = readReminder();
+  if (reminder.error) {
+    reminderError.hidden = false;
+    showFieldError(inputReminderAmount);
+    return;
+  }
+
   const label = inputLabel.value === 'other'
     ? (inputCustomLabel.value.trim() || 'other')
     : inputLabel.value;
@@ -924,13 +1105,19 @@ document.getElementById('btn-save').addEventListener('click', () => {
     label,
     priority:  inputPriority.value,
     completed: false,
+    reminder:  reminder.value,
   };
 
+  const existing = editingId ? tasks.find(t => t.id === editingId) : null;
+  // A new deadline or reminder means a new reminder
+  const changed = !existing || existing.datetime !== datetime || taskReminder(existing) !== reminder.value;
+  if (existing && changed) clearNotified(editingId);
+  // A reminder whose time has already gone comes right away, and says so
+  const due = new Date(datetime).getTime();
+  const passed = changed && reminder.value !== null && due > Date.now() && due - reminder.value * 60000 <= Date.now();
+
   if (editingId) {
-    const existing = tasks.find(t => t.id === editingId);
     taskData.completed = existing ? existing.completed : false;
-    // New deadline means a new reminder
-    if (existing && existing.datetime !== datetime) clearNotified(editingId);
     tasks = tasks.map(t => t.id === editingId ? taskData : t);
   } else {
     tasks.push(taskData);
@@ -939,6 +1126,8 @@ document.getElementById('btn-save').addEventListener('click', () => {
   saveTasks();
   applyFilterAndSearch();
   closeModal();
+  checkNotifications();
+  if (passed && notificationState() === 'on') showToast(() => t('toast.reminderPassed'));
 });
 
 // Clicking anywhere on a task row (except the checkbox) selects it for
@@ -1388,15 +1577,25 @@ function applyTheme(theme) {
 const prefNotif = document.getElementById('pref-notifications');
 prefNotif.checked = localStorage.getItem('notifications') === 'true';
 
-prefNotif.addEventListener('change', async () => {
-  if (prefNotif.checked) {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      prefNotif.checked = false;
-      return;
-    }
-  }
-  localStorage.setItem('notifications', prefNotif.checked);
+// on, off (not turned on or not yet allowed), blocked or unsupported
+function notificationState() {
+  if (!('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'denied') return 'blocked';
+  return localStorage.getItem('notifications') === 'true' && Notification.permission === 'granted' ? 'on' : 'off';
+}
+
+// Asks for permission and turns notifications on if it is given
+async function turnOnNotifications() {
+  const on = await Notification.requestPermission() === 'granted';
+  prefNotif.checked = on;
+  localStorage.setItem('notifications', on);
+  if (on) checkNotifications();
+  return on;
+}
+
+prefNotif.addEventListener('change', () => {
+  if (prefNotif.checked) turnOnNotifications();
+  else localStorage.setItem('notifications', false);
 });
 
 // AI features
@@ -1421,9 +1620,14 @@ function setAi(on, save = true) {
 
 prefAi.addEventListener('change', () => setAi(prefAi.checked));
 
-// Remind 15 minutes before a deadline, once per task. Notified ids are
-// kept in localStorage so a reload does not notify again.
-const NOTIFY_BEFORE_MS = 15 * 60 * 1000;
+// Each task reminds once, at its own reminder time. One that came due while
+// the app was closed, or was already due when saved, shows as soon as it
+// can if the deadline is ahead.
+// Completed and overdue tasks never notify, so "at the deadline" comes in
+// the last 30 seconds before it. Notified ids are kept in localStorage so a
+// reload does not notify again; a new deadline or reminder clears them.
+const AT_DEADLINE_LEAD = 30 * 1000;
+let reminderTimer = null;
 let notifiedIds = new Set(JSON.parse(localStorage.getItem('notifiedIds') || '[]'));
 
 function saveNotifiedIds() {
@@ -1435,25 +1639,46 @@ function clearNotified(id) {
 }
 
 function checkNotifications() {
-  if (localStorage.getItem('notifications') !== 'true') return;
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  clearTimeout(reminderTimer);
+  if (notificationState() !== 'on') return;
 
   const now = Date.now();
   let changed = false;
+  let next = Infinity;
   tasks.forEach(task => {
-    if (task.completed || task.sample || notifiedIds.has(task.id)) return;
+    const reminder = taskReminder(task);
+    if (task.completed || task.sample || reminder === null || notifiedIds.has(task.id)) return;
     const due = new Date(task.datetime).getTime();
-    if (due > now && due - now <= NOTIFY_BEFORE_MS) {
-      new Notification(t('notify.title'), {
-        body: t('notify.body', { name: task.name, date: formatDate(task.datetime) }),
-        lang: currentLang,
-        dir: currentLang === 'ar' ? 'rtl' : 'ltr',
-      });
-      notifiedIds.add(task.id);
-      changed = true;
+    if (Number.isNaN(due) || due <= now) return;
+    const from = due - (reminder === 0 ? AT_DEADLINE_LEAD : reminder * 60000);
+    if (from > now) {
+      next = Math.min(next, from);
+      return;
     }
+    const minutes = Math.round((due - now) / 60000);
+    const date = formatDate(task.datetime);
+    new Notification(task.name, {
+      body: minutes < 1 ? t('notify.dueNow', { date }) : t('notify.due', { amount: leadText(minutes), date }),
+      lang: currentLang,
+      dir: currentLang === 'ar' ? 'rtl' : 'ltr',
+      tag: task.id,
+    });
+    notifiedIds.add(task.id);
+    changed = true;
   });
   if (changed) saveNotifiedIds();
+  // Between the 30-second checks, a timer brings the next reminder on time
+  if (next - now < 30000) reminderTimer = setTimeout(checkNotifications, next - now + 20);
+}
+
+// "30 minutes", "1 hour", "1 day"; uneven times over 90 minutes round to hours
+function leadText(minutes) {
+  let { unit, count } = reminderParts(minutes);
+  if (unit === 'minute' && minutes > 90) {
+    unit = 'hour';
+    count = Math.round(minutes / 60);
+  }
+  return t(`unitLong.${unit}`, { count });
 }
 
 document.getElementById('btn-notif-settings').addEventListener('click', () => {
@@ -1481,6 +1706,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
       t('report.label', { value: labelName(task.label) }),
       t('report.priority', { value: priorityName(task.priority) }),
       t('report.status', { value: getStatus(task) }),
+      t('report.reminder', { value: reminderText(taskReminder(task)) }),
       '',
     );
   });
@@ -1588,6 +1814,7 @@ function applyLanguage() {
     if (date && date.date) inputDate.value = toDateText(date.date);
   }
   modalTitle.textContent = t(editingId ? 'modal.edit' : 'modal.add');
+  renderReminderOptions();
   updateQuickDateTitles();
   updateDeadlineSummary();
   if (deadlineErrorText) deadlineError.textContent = deadlineErrorText();
@@ -1817,6 +2044,8 @@ function init() {
   // Translates the page and draws the list
   applyLanguage();
   lucide.createIcons();
+  // A reminder that came due while the app was closed shows now
+  checkNotifications();
   // Re-check deadlines every 30s so a task locks itself the moment it
   // becomes overdue, without needing a manual reload. Relative due
   // times and reminders are updated from the same check.

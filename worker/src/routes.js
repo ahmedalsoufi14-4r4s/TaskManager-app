@@ -99,6 +99,8 @@ const PARSE_SYSTEM = `You read one short note and turn it into a task for a to-d
 
 name: the task itself, copied from the note as written: same language, same words, same word forms, no rephrasing. Only leave out the day, the time, the priority and lead-ins such as "remind me to", "I need to", "ذكرني", "لازم", "أبغى". In English, start with a capital letter.
 
+time_only: true when the note gives a clock time (3 العصر، at 5pm, المغرب) but names no day, date or "in N days/hours".
+
 date: YYYY-MM-DD from the dates in the message, or "" if the note names no day.
 - today, tonight, this evening, اليوم، الليلة: today.
 - tomorrow, بكرة، بكره، باكر، غدًا: tomorrow.
@@ -114,10 +116,12 @@ time: 24-hour HH:MM, or "" if the note gives no time.
 - "ونص" or "and a half" adds 30 minutes, "وربع" adds 15, "إلا ربع" is 15 minutes before the hour, "إلا ثلث" 20 minutes before.
 - A part of the day with no number: الفجر 05:00; morning, الصبح، الصباح 09:00; noon, الظهر 12:00; afternoon, العصر 15:30; المغرب 18:00; evening, العشاء، المسا 20:00; tonight, الليلة 21:00; end of the day, آخر اليوم، midnight، نص الليل 23:59.
 - In N hours or minutes (بعد ساعتين، بعد نص ساعة): add to the time now, and move the date if that passes midnight.
-- A time with no day: today if that time is still ahead of now, otherwise tomorrow.
+- A time with no day (and not "in N hours"): leave date "", and the app picks today or tomorrow from the device clock.
 
 label:
 ${LABEL_RULES}
+
+reminder: only when the note asks to be reminded a set time before the task, as a whole number of minutes before the deadline written as digits: "remind me 30 minutes before", «ذكرني قبلها بنص ساعة», «نبهني قبل بساعة» (60), "a day before", «قبلها بيوم» (1440), «قبلها بربع ساعة» (15), "remind me at the deadline", «ذكرني وقتها» (0). "none" if the note says not to remind ("no reminder", «بدون تذكير»), and "" otherwise. "Remind me to call mom" is only a lead-in, not a reminder time.
 
 priority: only when the note says it, otherwise none.
 - high: urgent, important, ASAP, high priority, ضروري، مهم، عاجل، مستعجل، أولوية عالية.
@@ -128,12 +132,14 @@ const PARSE_SCHEMA = {
   type: 'object',
   properties: {
     name: { type: 'string' },
+    time_only: { type: 'boolean', description: 'True if the note gives a clock time but no day, date or "in N days/hours"' },
     date: { type: 'string', description: 'YYYY-MM-DD, or empty' },
     time: { type: 'string', description: '24-hour HH:MM, or empty' },
     label: { type: 'string', enum: [...LABELS, 'none'] },
     priority: { type: 'string', enum: [...PRIORITIES, 'none'] },
+    reminder: { type: 'string', description: 'Minutes before the deadline as digits, "none", or empty' },
   },
-  required: ['name', 'date', 'time', 'label', 'priority'],
+  required: ['name', 'time_only', 'date', 'time', 'label', 'priority', 'reminder'],
   additionalProperties: false,
 };
 
@@ -159,15 +165,30 @@ ${text}
 function parseClean(raw, input) {
   const answer = answerObject(raw);
   const today = input.now.slice(0, 10);
-  const date = realDate(answer.date) && answer.date >= addDays(today, -1) && answer.date <= addDays(today, 400)
-    ? answer.date : null;
-  return {
+  // A clock time with no day: no date, so the app picks today or tomorrow itself
+  const date = answer.time_only !== true && realDate(answer.date)
+    && answer.date >= addDays(today, -1) && answer.date <= addDays(today, 400) ? answer.date : null;
+  const task = {
     name: tidy(answer.name, 120) || tidy(input.text, 120),
     date,
     time: TIME.test(answer.time) ? answer.time : null,
     label: LABELS.includes(answer.label) ? answer.label : null,
     priority: PRIORITIES.includes(answer.priority) ? answer.priority : null,
   };
+  // Added later: only present when the note asked for (or against) a
+  // reminder, so the answer stays the same for everything else
+  const reminder = parseReminder(answer.reminder);
+  if (reminder !== undefined) task.reminder = reminder;
+  return task;
+}
+
+// "30" -> 30 (up to 30 days), "none" -> null, anything else -> undefined
+const MAX_REMINDER = 30 * 1440;
+function parseReminder(value) {
+  if (value === 'none') return null;
+  if (typeof value !== 'string' || !/^\d{1,5}$/.test(value)) return undefined;
+  const minutes = Number(value);
+  return minutes <= MAX_REMINDER ? minutes : undefined;
 }
 
 // ── POST /suggest: a label and priority for a task name ──
@@ -301,7 +322,8 @@ function checkPlan(data) {
 // maxBytes limits the request body, maxTokens the answer
 export const ROUTES = {
   '/parse': {
-    name: 'parse', maxBytes: 2048, maxTokens: 300,
+    // Working out days and times is worth a little thinking, which needs token room
+    name: 'parse', maxBytes: 2048, maxTokens: 2000, think: true,
     system: PARSE_SYSTEM, schema: PARSE_SCHEMA,
     check: checkParse, message: parseMessage, clean: parseClean,
   },
