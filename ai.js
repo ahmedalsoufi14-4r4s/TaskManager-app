@@ -124,10 +124,11 @@ function fillForm(task) {
     setDeadline(`${date || fallback.slice(0, 10)}T${time || fallback.slice(11)}`);
     filled.push(inputDate, inputTime);
   }
-  if (task.label) {
-    inputLabel.value = task.label;
-    customLabelGroup.style.display = 'none';
+  const label = answerLabel(task);
+  if (label) {
+    setFormLabel(label);
     filled.push(inputLabel);
+    if (inputLabel.value === 'other') filled.push(inputCustomLabel);
   }
   if (task.priority) {
     inputPriority.value = task.priority;
@@ -139,8 +140,23 @@ function fillForm(task) {
     filled.push(inputReminder);
   }
   // What the answer set counts as chosen, so a suggestion won't flip it
-  suggestChosen = { label: !!task.label, priority: !!task.priority };
+  suggestChosen = { label: !!label, priority: !!task.priority };
   flashFields(filled);
+}
+
+// An answer's label: built-in, or other with a custom label of its own
+const answerLabel = answer => (answer.label === 'other' && answer.customLabel) || answer.label;
+
+// The label the form would save, and setting one the way openModal does
+function formLabel() {
+  return inputLabel.value === 'other' ? (inputCustomLabel.value.trim() || 'other') : inputLabel.value;
+}
+
+function setFormLabel(label) {
+  const builtIn = BUILT_IN_LABELS.includes(label);
+  inputLabel.value = builtIn ? label : 'other';
+  inputCustomLabel.value = builtIn ? '' : label;
+  customLabelGroup.style.display = inputLabel.value === 'other' ? 'flex' : 'none';
 }
 
 let aiNoteKey = null;
@@ -283,7 +299,7 @@ function suggestionParts() {
   if (!suggestion) return null;
   const label = suggestChosen.label ? null : suggestion.label;
   const priority = suggestChosen.priority ? null : suggestion.priority;
-  const changes = (label && label !== inputLabel.value) || (priority && priority !== inputPriority.value);
+  const changes = (label && label !== formLabel()) || (priority && priority !== inputPriority.value);
   return changes ? { label, priority } : null;
 }
 
@@ -305,7 +321,7 @@ async function requestSuggestion() {
     const result = await aiRequest('/suggest', { name: clip(name, 120), lang: currentLang }, 8000);
     suggestLoading = false;
     if (result.data) {
-      answer = result.data;
+      answer = { label: answerLabel(result.data), priority: result.data.priority };
       rememberSuggestion(key, answer);
     }
   }
@@ -319,10 +335,10 @@ function applySuggestion() {
   if (!parts) return;
   const filled = [];
   if (parts.label) {
-    inputLabel.value = parts.label;
-    customLabelGroup.style.display = 'none';
+    setFormLabel(parts.label);
     suggestChosen.label = true;
     filled.push(inputLabel);
+    if (inputLabel.value === 'other') filled.push(inputCustomLabel);
   }
   if (parts.priority) {
     inputPriority.value = parts.priority;
@@ -360,6 +376,10 @@ inputName.addEventListener('input', () => {
 
 // A label or priority picked by hand is never replaced
 inputLabel.addEventListener('change', () => {
+  suggestChosen.label = true;
+  renderSuggest();
+});
+inputCustomLabel.addEventListener('input', () => {
   suggestChosen.label = true;
   renderSuggest();
 });
