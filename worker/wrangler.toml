@@ -12,6 +12,13 @@ ALLOWED_ORIGIN = "https://ahmedalsoufi14-4r4s.github.io"
 # Requests per IP per minute, and requests for everyone per day (UTC)
 PER_MINUTE = "20"
 DAILY_CAP = "300"
+# Recordings per day for /transcribe, counted apart; 300 of at most 35 s
+# stays inside Workers AI's free daily neurons
+TRANSCRIBE_CAP = "300"
+
+# Workers AI, for Whisper in /transcribe (src/transcribe.js)
+[ai]
+binding = "AI"
 
 # Counts requests for the limits above (src/guard.js)
 [[durable_objects.bindings]]

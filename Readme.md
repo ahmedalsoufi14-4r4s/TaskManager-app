@@ -27,13 +27,13 @@ A responsive task manager with add/edit/delete, labels, priorities, filtering, s
 - English and Arabic with a one-click switch: full right-to-left layout, Arabic dates and plurals, and a local Arabic font that works offline
 - Built-in guide: a welcome tour that points out every feature on the real page (with optional sample tasks), plus How to use and Help and tips in the menu
 - Optional AI features (off until turned on in the menu), using Claude through a small Cloudflare Worker:
-  - Quick add in plain English or Arabic (Saudi dialect included), typed or spoken, that fills the add form for review
+  - Quick add in plain English or Arabic (Saudi dialect included), typed or spoken, that fills the add form for review. Speech uses the browser's own recognition where it works; in Brave and browsers without it, the recording is turned into text by Whisper on Workers AI
   - Label and priority suggestions while typing a new task's name, used only with one tap
   - Plan my day: an order for today's and overdue tasks with a short reason for each
 
 ## AI Worker
 
-`worker/` holds the Cloudflare Worker behind the AI features. It has three fixed endpoints (`/parse`, `/suggest`, `/plan`) with their instructions on the server, answers only the GitHub Pages origin, limits input sizes, and has a per-IP rate limit and a daily cap (see `wrangler.toml`). It uses Claude Haiku with structured JSON output and checks every answer. The API key is the `ANTHROPIC_API_KEY` secret, set in the Cloudflare dashboard and never stored in the repo. Deploy with `npm install` and `npx wrangler deploy` in `worker/`.
+`worker/` holds the Cloudflare Worker behind the AI features. It has three fixed Claude endpoints (`/parse`, `/suggest`, `/plan`) with their instructions on the server, plus `/transcribe`, which turns a short voice recording (at most 640 KB and 35 s) into text with Whisper on Workers AI (the `AI` binding) and has its own daily cap. The Worker answers only the GitHub Pages origin, limits input sizes, and has a per-IP rate limit and a daily cap (see `wrangler.toml`). It uses Claude Haiku with structured JSON output and checks every answer. The API key is the `ANTHROPIC_API_KEY` secret, set in the Cloudflare dashboard and never stored in the repo. Deploy with `npm install` and `npx wrangler deploy` in `worker/`.
 
 ## Tech stack
 

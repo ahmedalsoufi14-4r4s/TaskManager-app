@@ -15,9 +15,9 @@
         ? savedTheme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       // AI features' quick add bar and plan button show from the first
       // paint, so they never push the list down; the mic only where the
-      // browser can listen
+      // browser can listen or record (ai.js)
       try { if (localStorage.getItem('ai') === 'on') document.documentElement.classList.add('ai-on'); } catch (e) {}
-      if (window.SpeechRecognition || window.webkitSpeechRecognition) document.documentElement.classList.add('speech');
+      if (window.SpeechRecognition || window.webkitSpeechRecognition || (window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) document.documentElement.classList.add('speech');
     </script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" href="icons/icon-192.png" />
@@ -112,8 +112,10 @@
         <i data-lucide="wand-sparkles"></i>
         <input type="text" id="ai-quick-input" dir="auto" maxlength="300" autocomplete="off" enterkeyhint="go"
           data-i18n-placeholder="ai.quickPlaceholder" data-i18n-aria-label="ai.quickLabel" />
+        <span class="ai-rec" id="ai-rec" dir="ltr" aria-hidden="true" hidden><span class="ai-rec-dot"></span><span>0:00</span></span>
         <button type="button" class="icon-btn ai-mic" id="btn-ai-mic" aria-pressed="false" data-i18n-title="ai.mic" data-i18n-aria-label="ai.mic">
           <i data-lucide="mic"></i>
+          <i data-lucide="square"></i>
         </button>
         <button type="button" class="icon-btn ai-go" id="btn-ai-go" disabled data-i18n-title="ai.quickGo" data-i18n-aria-label="ai.quickGo">
           <i data-lucide="arrow-right"></i>

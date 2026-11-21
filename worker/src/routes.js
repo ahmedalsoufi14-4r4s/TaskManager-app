@@ -1,7 +1,9 @@
 // ─── ROUTES ──────────────────────────────────────────
-// The three fixed jobs. Each says what it accepts, the instructions and
+// The three Claude jobs, plus /transcribe (transcribe.js). Each says what it accepts, the instructions and
 // JSON schema sent to Claude, and how the answer is checked before the app
 // sees it. Anything in an answer that fails a check is dropped.
+
+import { TRANSCRIBE } from './transcribe.js';
 
 export const LABELS = ['university', 'work', 'personal', 'health'];
 export const PRIORITIES = ['high', 'medium', 'low'];
@@ -431,4 +433,6 @@ export const ROUTES = {
     system: PLAN_SYSTEM, schema: PLAN_SCHEMA,
     check: checkPlan, message: planMessage, clean: planClean,
   },
+  // Audio in, text out through Workers AI (transcribe.js)
+  '/transcribe': TRANSCRIBE,
 };

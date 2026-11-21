@@ -1,13 +1,16 @@
 // ─── TASK MANAGER AI ─────────────────────────────────
 // A small proxy between the Task Manager app and the Claude API. It does
 // three fixed jobs (POST /parse, /suggest and /plan, see routes.js) with
-// their instructions kept here, answers only the app's own origin, limits
-// sizes and request rates, and checks every answer before passing it on.
+// their instructions kept here, and turns voice recordings into text
+// through Workers AI (POST /transcribe, transcribe.js). It answers only the
+// app's own origin, limits sizes and request rates, and checks every
+// answer before passing it on.
 // The API key is the ANTHROPIC_API_KEY secret, set in the Cloudflare
 // dashboard. Logs hold token counts and error types, never text.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { ROUTES } from './routes.js';
+import { AUDIO_TYPES } from './transcribe.js';
 
 export { Guard } from './guard.js';
 
@@ -31,39 +34,43 @@ export default {
       });
     }
 
-    const route = ROUTES[new URL(request.url).pathname];
+    const url = new URL(request.url);
+    const route = ROUTES[url.pathname];
     if (!route) return json({ error: 'not_found' }, 404, cors);
     if (request.method !== 'POST') return json({ error: 'method' }, 405, { ...cors, Allow: 'POST, OPTIONS' });
-    if (!(request.headers.get('Content-Type') || '').startsWith('application/json')) {
+    // JSON, or for /transcribe a recording in one of the audio types
+    const type = (request.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+    if (route.audio ? !AUDIO_TYPES.includes(type) : type !== 'application/json') {
       return json({ error: 'content_type' }, 415, cors);
     }
 
     const body = await readBody(request, route.maxBytes);
     if (body === null) return json({ error: 'too_large' }, 413, cors);
-    let data;
-    try {
-      data = JSON.parse(body);
-    } catch {
-      return json({ error: 'bad_request' }, 400, cors);
-    }
-    const checked = route.check(data);
+    const checked = route.audio ? route.check(body, url.searchParams.get('lang')) : checkJson(route, body);
     if (checked.error) return json({ error: checked.error }, checked.error === 'too_large' ? 413 : 400, cors);
 
-    if (!env.ANTHROPIC_API_KEY) return json({ error: 'not_configured' }, 503, cors);
+    if (route.audio ? !env.AI : !env.ANTHROPIC_API_KEY) return json({ error: 'not_configured' }, 503, cors);
 
     // Counted only now, so rejected requests never use up the limits
     const guard = env.GUARD.get(env.GUARD.idFromName('global'));
-    // A missing or mistyped limit falls back to the default, never to none
-    const pass = await guard.take(clientKey(request), Number(env.PER_MINUTE) || 20, Number(env.DAILY_CAP) || 300);
+    // A missing or mistyped limit falls back to the default, never to none.
+    // Recordings have their own daily cap, so voice never uses up Claude's.
+    const pass = route.audio
+      ? await guard.take(clientKey(request), Number(env.PER_MINUTE) || 20, Number(env.TRANSCRIBE_CAP) || 300, 'transcribe')
+      : await guard.take(clientKey(request), Number(env.PER_MINUTE) || 20, Number(env.DAILY_CAP) || 300);
     if (!pass.ok) {
       return json({ error: pass.error, retryAfter: pass.retryAfter }, 429, { ...cors, 'Retry-After': String(pass.retryAfter) });
     }
 
     try {
-      return json(await ask(env, route, checked.input), 200, cors);
+      const answer = route.audio ? await route.run(env, checked.input) : await ask(env, route, checked.input);
+      // Only /transcribe answers with an error of its own (too_long)
+      if (answer.error) return json(answer, 413, cors);
+      return json(answer, 200, cors);
     } catch (err) {
       const failure = describeFailure(err);
-      console.log(JSON.stringify({ route: route.name, error: failure.log }));
+      // Workers AI errors say what was wrong with the audio, never what was said
+      console.log(JSON.stringify({ route: route.name, error: failure.log, ...(route.audio && { detail: String(err?.message).slice(0, 160) }) }));
       return json({ error: failure.error }, failure.status, cors);
     }
   },
@@ -108,24 +115,40 @@ function describeFailure(err) {
   return { status: 502, error: 'upstream', log: err && err.name };
 }
 
+function checkJson(route, bytes) {
+  let data;
+  try {
+    data = JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return { error: 'bad_request' };
+  }
+  return route.check(data);
+}
+
 // Reads at most limit bytes, or null if the body is bigger
 async function readBody(request, limit) {
   if (Number(request.headers.get('Content-Length')) > limit) return null;
-  if (!request.body) return '';
+  if (!request.body) return new Uint8Array(0);
   const reader = request.body.getReader();
-  const decoder = new TextDecoder();
+  const chunks = [];
   let size = 0;
-  let text = '';
   for (;;) {
     const { done, value } = await reader.read();
-    if (done) return text + decoder.decode();
+    if (done) break;
     size += value.byteLength;
     if (size > limit) {
       await reader.cancel();
       return null;
     }
-    text += decoder.decode(value, { stream: true });
+    chunks.push(value);
   }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return bytes;
 }
 
 // IPv4 as is; IPv6 by its /64, which one person usually holds whole

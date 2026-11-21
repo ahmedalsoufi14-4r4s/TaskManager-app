@@ -26,6 +26,36 @@
   animation: twinkle 1.2s ease-in-out infinite;
 }
 
+/* Recording (browsers that send audio to the Worker): a pulsing dot and
+   the time so far, beside the stop button */
+.ai-rec:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline: 4px;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  animation: rec-in 200ms ease-out;
+}
+
+.ai-rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--main-tint);
+  animation: rec-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes rec-in {
+  from { opacity: 0; transform: scale(0.8); }
+}
+
+@keyframes rec-dot {
+  50% { transform: scale(0.7); opacity: 0.6; }
+}
+
 /* Listening: the mic fills and a ring grows out of it */
 .ai-mic[aria-pressed="true"] {
   background-color: var(--main-tint);

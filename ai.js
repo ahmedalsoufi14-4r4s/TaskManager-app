@@ -67,6 +67,7 @@ const aiQuickBar    = document.getElementById('ai-quick');
 const aiQuickStatus = document.getElementById('ai-quick-status');
 const aiGo          = document.getElementById('btn-ai-go');
 const aiMic         = document.getElementById('btn-ai-mic');
+const aiRec         = document.getElementById('ai-rec');
 
 let quickBusy = false;
 
@@ -172,19 +173,24 @@ function renderNote() {
 }
 
 function renderQuick() {
-  aiQuickBar.classList.toggle('busy', quickBusy);
-  aiQuickBar.setAttribute('aria-busy', String(quickBusy));
+  const busy = quickBusy || transcribing;
+  aiQuickBar.classList.toggle('busy', busy);
+  aiQuickBar.setAttribute('aria-busy', String(busy));
   aiGo.disabled = !aiQuickInput.value.trim();
-  aiQuickStatus.textContent = quickBusy ? t('ai.reading') : '';
+  aiQuickStatus.textContent = quickBusy ? t('ai.reading') : transcribing ? t('ai.transcribing') : recorder ? t('ai.recording') : '';
   // Names that change with the state also follow a language switch
-  const micKey = listening ? 'ai.micStop' : 'ai.mic';
+  const micKey = recorder ? 'ai.recordStop' : listening ? 'ai.micStop' : 'ai.mic';
   aiMic.dataset.i18nTitle = micKey;
   aiMic.dataset.i18nAriaLabel = micKey;
   aiMic.title = t(micKey);
   aiMic.setAttribute('aria-label', t(micKey));
   aiMic.setAttribute('aria-pressed', String(listening));
-  aiQuickInput.dataset.i18nPlaceholder = listening ? 'ai.listening' : 'ai.quickPlaceholder';
+  aiMic.disabled = transcribing;
+  aiQuickInput.dataset.i18nPlaceholder = transcribing ? 'ai.transcribing' : recorder ? 'ai.recordingHint'
+    : listening ? 'ai.listening' : 'ai.quickPlaceholder';
   aiQuickInput.placeholder = t(aiQuickInput.dataset.i18nPlaceholder);
+  aiRec.hidden = !recorder;
+  renderRecordTime();
 }
 
 aiQuickInput.addEventListener('input', renderQuick);
@@ -196,19 +202,56 @@ aiQuickInput.addEventListener('keydown', (e) => {
 aiGo.addEventListener('click', quickAdd);
 
 // ── Voice ──
-// The browser's own speech recognition, in the app's language. What it
-// hears goes into the bar and is sent as soon as the speaker stops.
+// The browser's own speech recognition where it works (Chrome, Edge,
+// Safari, phones), in the app's language: what it hears goes into the bar
+// and is sent as soon as the speaker stops. Brave blocks the service it
+// uses and some browsers have none, so there the mic records instead and
+// the Worker's /transcribe turns the recording into text; the mic (now a
+// stop button) or 30 s ends it. A recognition failure that means the
+// service can't be reached switches to recording for the rest of the visit.
 
 const SpeechRecognizer = window.SpeechRecognition || window.webkitSpeechRecognition;
+const canRecord = !!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+let useRecorder = canRecord && (!SpeechRecognizer || 'brave' in navigator);
+const FALLBACK_ERRORS = ['network', 'service-not-allowed', 'language-not-supported'];
+// Small files in a type Whisper reads; Safari makes mp4
+const RECORD_TYPES = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/webm'];
+const RECORD_MAX_MS = 30000;
 let recognition = null;
+let recorder = null;
 let listening = false;
+let transcribing = false;
+let recordStarting = false;
+let recordCancelled = false;
+let recordStart = 0;
+let recordTimer = null;
+
+// Each failure's message by its error code (from the browser or the
+// Worker), shown with the code; any other code gets ai.micFailed
+const MIC_ERRORS = {
+  'not-allowed': 'ai.micBlocked', NotAllowedError: 'ai.micBlocked', SecurityError: 'ai.micBlocked',
+  'audio-capture': 'ai.micMissing', NotFoundError: 'ai.micMissing', OverconstrainedError: 'ai.micMissing',
+  NotReadableError: 'ai.micInUse',
+  'no-speech': 'ai.micNothing', 'no-audio': 'ai.micNothing',
+  offline: 'ai.micOffline', rate_limited: 'ai.micBusy', daily_limit: 'ai.micDaily',
+  too_long: 'ai.micTooLong', too_large: 'ai.micTooLong',
+};
+
+function micFailed(code) {
+  // Isolated, so a Latin code reads right inside Arabic text
+  showToast(() => t(MIC_ERRORS[code] || 'ai.micFailed', { code: `⁨${code}⁩` }));
+}
 
 function toggleListening() {
   if (listening) {
     stopListening();
     return;
   }
-  if (!SpeechRecognizer || quickBusy) return;
+  if (quickBusy || transcribing) return;
+  if (useRecorder || !SpeechRecognizer) {
+    startRecording();
+    return;
+  }
   recognition = new SpeechRecognizer();
   recognition.lang = currentLang === 'ar' ? 'ar-SA' : 'en-US';
   recognition.interimResults = true;
@@ -224,16 +267,18 @@ function toggleListening() {
     recognition = null;
     listening = false;
     renderQuick();
-    if (failure === 'not-allowed' || failure === 'service-not-allowed') showToast(() => t('ai.micBlocked'));
-    else if (failure === 'no-speech' || (!failure && !heard)) showToast(() => t('ai.micNothing'));
-    else if (failure && failure !== 'aborted') showToast(() => t('ai.micFailed'));
+    if (FALLBACK_ERRORS.includes(failure) && canRecord && aiOn()) {
+      useRecorder = true;
+      startRecording();
+    } else if (failure === 'no-speech' || (!failure && !heard)) micFailed('no-speech');
+    else if (failure && failure !== 'aborted') micFailed(failure);
     else if (heard) quickAdd();
   };
   try {
     recognition.start();
-  } catch {
+  } catch (err) {
     recognition = null;
-    showToast(() => t('ai.micFailed'));
+    micFailed(err.name || 'start');
     return;
   }
   listening = true;
@@ -242,6 +287,116 @@ function toggleListening() {
 
 function stopListening() {
   if (recognition) recognition.stop();
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+}
+
+// Turning AI features off drops a recording instead of sending it
+function cancelListening() {
+  recordCancelled = true;
+  stopListening();
+}
+
+async function startRecording() {
+  if (recordStarting) return;
+  recordStarting = true;
+  recordCancelled = false;
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+  } catch (err) {
+    recordStarting = false;
+    micFailed(err.name || 'getUserMedia');
+    return;
+  }
+  recordStarting = false;
+  const stopStream = () => stream.getTracks().forEach(track => track.stop());
+  if (recordCancelled || !aiOn() || quickBusy) {
+    stopStream();
+    return;
+  }
+  const type = RECORD_TYPES.find(type => MediaRecorder.isTypeSupported(type));
+  const chunks = [];
+  let failure = null;
+  let rec;
+  try {
+    rec = new MediaRecorder(stream, { ...(type && { mimeType: type }), audioBitsPerSecond: 32000 });
+    rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    rec.onerror = (e) => { failure = (e.error && e.error.name) || 'recorder'; };
+    rec.onstop = () => {
+      stopStream();
+      clearInterval(recordTimer);
+      recorder = null;
+      listening = false;
+      renderQuick();
+      if (recordCancelled) return;
+      if (failure) micFailed(failure);
+      else sendRecording(new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' }));
+    };
+    rec.start();
+  } catch (err) {
+    stopStream();
+    micFailed(err.name || 'recorder');
+    return;
+  }
+  recorder = rec;
+  listening = true;
+  recordStart = Date.now();
+  recordTimer = setInterval(() => {
+    if (Date.now() - recordStart >= RECORD_MAX_MS) stopListening();
+    else renderRecordTime();
+  }, 250);
+  renderQuick();
+}
+
+// The time recorded so far, as m:ss
+function renderRecordTime() {
+  if (!recorder) return;
+  const seconds = Math.floor((Date.now() - recordStart) / 1000);
+  aiRec.lastElementChild.textContent = `${formatDigits(Math.floor(seconds / 60))}:${formatDigits(String(seconds % 60).padStart(2, '0'))}`;
+}
+
+async function sendRecording(blob) {
+  // Under the Worker's minimum: nothing was really recorded
+  if (blob.size < 1024) {
+    micFailed('no-audio');
+    return;
+  }
+  transcribing = true;
+  renderQuick();
+  const result = await transcribeRequest(blob);
+  transcribing = false;
+  renderQuick();
+  if (result.error) micFailed(result.error);
+  else if (!result.text) micFailed('no-speech');
+  else {
+    aiQuickInput.value = result.text;
+    renderQuick();
+    quickAdd();
+  }
+}
+
+// POST the recording to the Worker: { text }, or { error } with the
+// Worker's own code, offline, timeout, fetch_failed or http_<status>
+async function transcribeRequest(blob) {
+  if (!navigator.onLine) return { error: 'offline' };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const res = await fetch(`${AI_URL}/transcribe?lang=${currentLang === 'ar' ? 'ar' : 'en'}`, {
+      method: 'POST',
+      headers: { 'Content-Type': blob.type.split(';')[0] || 'audio/webm' },
+      body: blob,
+      signal: controller.signal,
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data && typeof data.text === 'string') return { text: data.text.trim() };
+    return { error: data && /^[a-z_]{1,30}$/.test(data.error) ? data.error : `http_${res.status}` };
+  } catch (err) {
+    if (!navigator.onLine) return { error: 'offline' };
+    return { error: err.name === 'AbortError' ? 'timeout' : 'fetch_failed' };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 aiMic.addEventListener('click', toggleListening);
@@ -604,7 +759,7 @@ window.addEventListener('keydown', (e) => {
 // Turned on again: everything is ready as before.
 function aiChanged() {
   if (!aiOn()) {
-    stopListening();
+    cancelListening();
     closePlan();
     clearTimeout(suggestTimer);
     suggestion = null;

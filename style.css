@@ -2050,6 +2050,17 @@ html:not(.speech) .ai-mic {
   display: none;
 }
 
+/* The mic turns into a stop button while it listens or records */
+.ai-mic .lucide-square,
+.ai-mic[aria-pressed="true"] .lucide-mic {
+  display: none;
+}
+
+.ai-mic[aria-pressed="true"] .lucide-square {
+  display: block;
+  fill: currentColor;
+}
+
 /* Quick add: a field like the search bar, its wand turns on focus */
 .ai-quick {
   display: flex;
