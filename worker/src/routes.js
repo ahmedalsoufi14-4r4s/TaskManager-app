@@ -148,6 +148,7 @@ next_week: true only when the note says next week, الأسبوع الجاي، �
 said_today: true when the note says today, tonight, this evening, اليوم or الليلة.
 day_part: the part of the day the note names: dawn (الفجر), morning (morning, الصبح، الصباح، صباحًا), noon (noon, الظهر), afternoon (afternoon, العصر), evening (evening, المغرب), isha (العشاء، العشا، المسا، مساءً), night (tonight, night, الليلة، الليل، بالليل), end (end of the day, آخر اليوم، midnight، نص الليل), or "". am and pm are not parts of the day.
 clock: the clock time the note says, on a 12-hour clock as H:MM with Western digits: «3 العصر» 3:00, «٥ ونص» 5:30, «4 إلا ربع» 3:45, "11:59 pm" 11:59. "" when the note gives no clock number, and for "in N hours".
+in_minutes: when the task is due in a number of hours or minutes from now, that many minutes as digits: «بعد ساعتين» 120, «بعد ساعة» 60, «بعد نص ساعة» 30, «بعد ربع ساعة» 15, "in 30 minutes" 30, "in 2 hours" 120, "in an hour and a half" 90. "" otherwise, also for "in N days" and for reminder times («قبلها بنص ساعة» is a reminder, not in_minutes).
 
 ${LABEL_RULES}
 
@@ -174,13 +175,14 @@ const PARSE_SCHEMA = {
     date: { type: 'string', description: 'YYYY-MM-DD, or empty' },
     day_part: { type: 'string', enum: [...Object.keys(PART_TIMES), ''] },
     clock: { type: 'string', description: 'The clock time said, 12-hour H:MM, or empty' },
+    in_minutes: { type: 'string', description: 'Minutes from now for "in N hours/minutes", as digits, or empty' },
     time: { type: 'string', description: '24-hour HH:MM, or empty' },
     ...LABEL_FIELDS,
     priority: { type: 'string', enum: PRIORITIES },
     priority_said: { type: 'boolean', description: 'True if words in the note set the priority' },
     reminder: { type: 'string', description: 'Minutes before the deadline as digits, "none", or empty' },
   },
-  required: ['name', 'time_only', 'day_named', 'next_week', 'said_today', 'date', 'day_part', 'clock', 'time',
+  required: ['name', 'time_only', 'day_named', 'next_week', 'said_today', 'date', 'day_part', 'clock', 'in_minutes', 'time',
     'label', 'custom_label', 'priority', 'priority_said', 'reminder'],
   additionalProperties: false,
 };
@@ -217,14 +219,26 @@ function parseClean(raw, input) {
     ...cleanLabel(answer),
     priority: PRIORITIES.includes(answer.priority) ? answer.priority : null,
   };
+  // "In 2 hours": now plus that, whatever the model put in date and time
+  const later = workedOutOffset(answer, input.now);
+  if (later) [task.date, task.time] = later.split('T');
   // High by kind (an exam, a bill) is medium when due after tomorrow,
   // unless the note itself asked for high
-  if (task.priority === 'high' && answer.priority_said !== true && date && date > addDays(today, 1)) task.priority = 'medium';
+  if (task.priority === 'high' && answer.priority_said !== true && task.date && task.date > addDays(today, 1)) task.priority = 'medium';
   // Added later: only present when the note asked for (or against) a
   // reminder, so the answer stays the same for everything else
   const reminder = parseReminder(answer.reminder);
   if (reminder !== undefined) task.reminder = reminder;
   return task;
+}
+
+// in_minutes "120" with now "2026-11-21T23:00" -> "2026-11-22T01:00", up to
+// a week ahead; anything else -> null
+function workedOutOffset(answer, now) {
+  if (typeof answer.in_minutes !== 'string' || !/^\d{1,5}$/.test(answer.in_minutes)) return null;
+  const minutes = Number(answer.in_minutes);
+  if (minutes < 1 || minutes > 7 * 1440) return null;
+  return new Date(Date.parse(`${now}:00Z`) + minutes * 60000).toISOString().slice(0, 16);
 }
 
 // "Next week" alone is 7 days from today, like the app's Next week button.
