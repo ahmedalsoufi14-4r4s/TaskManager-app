@@ -7,6 +7,13 @@ export const LABELS = ['university', 'work', 'personal', 'health'];
 export const PRIORITIES = ['high', 'medium', 'low'];
 const LANGUAGES = { en: 'English', ar: 'Arabic' };
 
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+// Set times for a part of the day said with no number
+const PART_TIMES = {
+  dawn: '05:00', morning: '09:00', noon: '12:00', afternoon: '16:00',
+  evening: '18:00', isha: '20:00', night: '21:00', end: '23:59',
+};
+
 const WEEKDAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const WEEKDAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -127,9 +134,16 @@ time: 24-hour HH:MM, or "" if the note gives no time.
 - Words next to a number choose AM or PM. AM: morning, am, الصبح، الصباح، صباحًا، الفجر. PM: afternoon, evening, night, pm, العصر، المغرب، العشاء، العشا، الليل، بالليل، المسا، مساءً. With الظهر, 12 stays 12:00 and 1 to 3 are PM. The number always sets the hour: 3 العصر is 15:00, 4 العصر 16:00, 9 بالليل 21:00.
 - A bare number: 7 to 11 is AM, 12 and 1 to 6 are PM, unless the task clearly says otherwise (dinner at 8 is 20:00).
 - "ونص" or "and a half" adds 30 minutes, "وربع" adds 15, "إلا ربع" is 15 minutes before the hour, "إلا ثلث" 20 minutes before.
-- A part of the day with no number: الفجر 05:00; morning, الصبح، الصباح 09:00; noon, الظهر 12:00; afternoon, العصر 15:30; المغرب 18:00; evening, العشاء، المسا 20:00; tonight, الليلة 21:00; end of the day, آخر اليوم، midnight، نص الليل 23:59.
+- A part of the day with no number: الفجر 05:00; morning, الصبح، الصباح 09:00; noon, الظهر 12:00; afternoon, العصر 16:00; evening, المغرب 18:00; العشاء، المسا 20:00; tonight, الليلة 21:00; end of the day, آخر اليوم، midnight، نص الليل 23:59.
 - In N hours or minutes (بعد ساعتين، بعد نص ساعة): add to the time now, and move the date if that passes midnight.
 - A time with no day (and not "in N hours"): leave date "", and the app picks today or tomorrow from the device clock.
+
+The app works some dates and times out itself from what the note says, so fill these as written:
+day_named: the weekday the note names (الخميس is thursday), or "".
+next_week: true only when the note says next week, الأسبوع الجاي، الاسبوع الجاي، الأسبوع القادم. "Next Thursday" and «الخميس الجاي» are not next week.
+said_today: true when the note says today, tonight, this evening, اليوم or الليلة.
+day_part: the part of the day the note names: dawn (الفجر), morning (morning, الصبح، الصباح، صباحًا), noon (noon, الظهر), afternoon (afternoon, العصر), evening (evening, المغرب), isha (العشاء، العشا، المسا، مساءً), night (tonight, night, الليلة، الليل، بالليل), end (end of the day, آخر اليوم، midnight، نص الليل), or "". am and pm are not parts of the day.
+clock: the clock time the note says, on a 12-hour clock as H:MM with Western digits: «3 العصر» 3:00, «٥ ونص» 5:30, «4 إلا ربع» 3:45, "11:59 pm" 11:59. "" when the note gives no clock number, and for "in N hours".
 
 ${LABEL_RULES}
 
@@ -150,14 +164,20 @@ const PARSE_SCHEMA = {
   properties: {
     name: { type: 'string' },
     time_only: { type: 'boolean', description: 'True if the note gives a clock time but no day, date or "in N days/hours"' },
+    day_named: { type: 'string', enum: [...WEEKDAYS, ''] },
+    next_week: { type: 'boolean', description: 'True if the note says next week' },
+    said_today: { type: 'boolean', description: 'True if the note says today or tonight' },
     date: { type: 'string', description: 'YYYY-MM-DD, or empty' },
+    day_part: { type: 'string', enum: [...Object.keys(PART_TIMES), ''] },
+    clock: { type: 'string', description: 'The clock time said, 12-hour H:MM, or empty' },
     time: { type: 'string', description: '24-hour HH:MM, or empty' },
     ...LABEL_FIELDS,
     priority: { type: 'string', enum: PRIORITIES },
     priority_said: { type: 'boolean', description: 'True if words in the note set the priority' },
     reminder: { type: 'string', description: 'Minutes before the deadline as digits, "none", or empty' },
   },
-  required: ['name', 'time_only', 'date', 'time', 'label', 'custom_label', 'priority', 'priority_said', 'reminder'],
+  required: ['name', 'time_only', 'day_named', 'next_week', 'said_today', 'date', 'day_part', 'clock', 'time',
+    'label', 'custom_label', 'priority', 'priority_said', 'reminder'],
   additionalProperties: false,
 };
 
@@ -184,12 +204,12 @@ function parseClean(raw, input) {
   const answer = answerObject(raw);
   const today = input.now.slice(0, 10);
   // A clock time with no day: no date, so the app picks today or tomorrow itself
-  const date = answer.time_only !== true && realDate(answer.date)
-    && answer.date >= addDays(today, -1) && answer.date <= addDays(today, 400) ? answer.date : null;
+  const picked = workedOutDate(answer, today) || (answer.time_only !== true ? answer.date : '');
+  const date = realDate(picked) && picked >= addDays(today, -1) && picked <= addDays(today, 400) ? picked : null;
   const task = {
     name: tidy(answer.name, 120) || tidy(input.text, 120),
     date,
-    time: TIME.test(answer.time) ? answer.time : null,
+    time: workedOutTime(answer, TIME.test(answer.time) ? answer.time : null),
     ...cleanLabel(answer),
     priority: PRIORITIES.includes(answer.priority) ? answer.priority : null,
   };
@@ -201,6 +221,35 @@ function parseClean(raw, input) {
   const reminder = parseReminder(answer.reminder);
   if (reminder !== undefined) task.reminder = reminder;
   return task;
+}
+
+// "Next week" alone is 7 days from today, like the app's Next week button.
+// A weekday alone is the first one after today, so the same weekday is 7
+// days ahead unless the note also says today. Otherwise null.
+function workedOutDate(answer, today) {
+  const named = WEEKDAYS.indexOf(answer.day_named);
+  if (answer.next_week === true && named < 0) return addDays(today, 7);
+  if (named >= 0 && answer.next_week !== true && answer.said_today !== true) {
+    return addDays(today, ((named - weekday(today) + 7) % 7) || 7);
+  }
+  return null;
+}
+
+// A part of the day with no number has a set time. With a number, the
+// number is the hour and the part only picks AM or PM (3 العصر is 15:00).
+function workedOutTime(answer, time) {
+  const part = answer.day_part;
+  if (!Object.hasOwn(PART_TIMES, part)) return time;
+  const clock = /^(\d{1,2}):([0-5]\d)$/.exec(typeof answer.clock === 'string' ? answer.clock.trim() : '');
+  if (!clock) return answer.clock ? time : PART_TIMES[part];
+  const hour = Number(clock[1]);
+  let hour24 = null;
+  if (part === 'noon') hour24 = hour === 12 ? 12 : hour <= 5 ? hour + 12 : null;
+  else if (['afternoon', 'evening', 'isha', 'night'].includes(part)) hour24 = hour < 12 ? hour + 12 : null;
+  else if (part === 'morning' || part === 'dawn') hour24 = hour < 12 ? hour : null;
+  // 12 at night, end of the day or an odd number: the model's own time
+  if (hour24 === null || hour < 1) return time;
+  return `${String(hour24).padStart(2, '0')}:${clock[2]}`;
 }
 
 // { label } for a built-in label, { label: 'other', customLabel } for one of
