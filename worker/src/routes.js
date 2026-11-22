@@ -217,7 +217,7 @@ function parseClean(raw, input) {
   const task = {
     name: tidy(answer.name, 120) || tidy(input.text, 120),
     date,
-    time: workedOutTime(answer, TIME.test(answer.time) ? answer.time : null),
+    time: bareHourTime(answer, input, date) || workedOutTime(answer, TIME.test(answer.time) ? answer.time : null),
     ...cleanLabel(answer),
     priority: PRIORITIES.includes(answer.priority) ? answer.priority : null,
   };
@@ -270,6 +270,27 @@ function workedOutTime(answer, time) {
   // 12 at night, end of the day or an odd number: the model's own time
   if (hour24 === null || hour < 1) return time;
   return `${String(hour24).padStart(2, '0')}:${clock[2]}`;
+}
+
+// A digit then am, pm, ص or م; and a 24-hour clock (17:00, 09:30)
+const AM_PM = /[0-9٠-٩]\s*(?:[ap]\.?\s?m(?![a-z])|[صم](?![ء-ي]))/i;
+const CLOCK_24 = /(?:^|[^\d:])(?:0\d|1[3-9]|2[0-3]):[0-5]\d/;
+
+// A bare hour (no am or pm, no part of the day): 1 to 6 is PM, 7 to 12
+// the next one from now (on a later day, its first one). 12 is noon, or
+// midnight once noon has passed. Otherwise null.
+function bareHourTime(answer, input, date) {
+  if (answer.day_part !== '' || AM_PM.test(input.text) || CLOCK_24.test(input.text)) return null;
+  const clock = /^(\d{1,2}):([0-5]\d)$/.exec(typeof answer.clock === 'string' ? answer.clock.trim() : '');
+  const hour = clock ? Number(clock[1]) : 0;
+  if (hour < 1 || hour > 12) return null;
+  const at = h => `${String(h).padStart(2, '0')}:${clock[2]}`;
+  if (hour <= 6) return at(hour + 12);
+  const morning = at(hour);
+  if (date && date > input.now.slice(0, 10)) return morning;
+  const now = input.now.slice(11);
+  if (hour === 12) return morning > now ? morning : at(0);
+  return [morning, at(hour + 12)].find(time => time > now) || morning;
 }
 
 // { label } for a built-in label, { label: 'other', customLabel } for one of

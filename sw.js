@@ -2,7 +2,7 @@
 
 // Bump the version whenever a cached file changes. Installing a new
 // version deletes the old cache.
-const CACHE_NAME = 'task-manager-v24';
+const CACHE_NAME = 'task-manager-v25';
 
 // Paths are relative to this file, so the app works under /TaskManager-app/
 const APP_SHELL = [
